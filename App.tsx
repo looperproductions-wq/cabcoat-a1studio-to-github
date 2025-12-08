@@ -9,7 +9,7 @@ import { ImageComparator } from './components/ImageComparator';
 const SHEEN_OPTIONS = ['Default', 'Matte', 'Satin', 'Semi-Gloss', 'High-Gloss'];
 
 const App: React.FC = () => {
-  const [hasKey, setHasKey] = useState<boolean>(false);
+  const [hasKey, setHasKey] = useState<boolean>(true);
   const [checkingKey, setCheckingKey] = useState<boolean>(true);
   const [isAIStudio, setIsAIStudio] = useState<boolean>(false);
 
@@ -18,7 +18,6 @@ const App: React.FC = () => {
   const [status, setStatus] = useState<ProcessingState>('idle');
   const [loadingMessage, setLoadingMessage] = useState<string>('Processing...');
   
-  // Selection State
   const [selectedColor, setSelectedColor] = useState<ColorOption | null>(null);
   const [customColor, setCustomColor] = useState<string>('');
   const [selectedHardware, setSelectedHardware] = useState<HardwareOption>(HARDWARE_OPTIONS[0]);
@@ -31,60 +30,13 @@ const App: React.FC = () => {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  const resultsRef = useRef<HTMLDivElement>(null); // For auto-scroll
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const checkApiKey = async () => {
-      try {
-        const aistudio = (window as any).aistudio;
-        if (aistudio) {
-          setIsAIStudio(true);
-          if (aistudio.hasSelectedApiKey) {
-            const hasSelected = await aistudio.hasSelectedApiKey();
-            setHasKey(hasSelected);
-          } else {
-             setHasKey(false);
-          }
-        } else {
-          setIsAIStudio(false);
-          setHasKey(true);
-        }
-      } catch (e) {
-        console.error("Error checking API key:", e);
-      } finally {
-        setCheckingKey(false);
-      }
-    };
-    checkApiKey();
+    // In the downloaded version, we rely on standard env var
+    setHasKey(!!process.env.API_KEY || false);
+    setCheckingKey(false);
   }, []);
-
-  const handleSelectKey = async () => {
-    const aistudio = (window as any).aistudio;
-    if (aistudio && aistudio.openSelectKey) {
-      await aistudio.openSelectKey();
-      setHasKey(true);
-      setError(null);
-    }
-  };
-
-  const checkAuthError = (err: any) => {
-    const errorStr = (err.message || '') + JSON.stringify(err);
-    if (
-      errorStr.includes("403") ||
-      errorStr.includes("PERMISSION_DENIED") ||
-      errorStr.includes("The caller does not have permission") ||
-      errorStr.includes("Requested entity was not found")
-    ) {
-      if (isAIStudio) {
-        setHasKey(false);
-        setError("Permission denied. Please connect a valid paid Google Cloud Project API Key.");
-      } else {
-        setError("API Configuration Error: Please ensure a valid API_KEY is set in your hosting environment.");
-      }
-      return true;
-    }
-    return false;
-  };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -101,7 +53,6 @@ const App: React.FC = () => {
       setError(null);
       setGeneratedImage(null);
       
-      // Reset selections
       setSelectedColor(null);
       setCustomColor('');
       setSelectedHardware(HARDWARE_OPTIONS[0]);
@@ -118,10 +69,6 @@ const App: React.FC = () => {
       setStatus('idle');
     } catch (err: any) {
       console.error(err);
-      if (checkAuthError(err)) {
-        setStatus('idle');
-        return;
-      }
       const errorMessage = err.message || JSON.stringify(err);
       setError(`Analysis Failed: ${errorMessage}`);
       setStatus('idle');
@@ -134,33 +81,24 @@ const App: React.FC = () => {
     specificMessage?: string
   ) => {
     if (!image) return;
+    if (document.activeElement instanceof HTMLElement) { document.activeElement.blur(); }
 
-    // 1. Close mobile keyboard if open
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
-
-    // 2. Resolve Hardware
     const hardwareToUse = newHardware || selectedHardware;
 
-    // 3. Resolve Color
     let effectiveColorName: string | null = null;
     let effectiveColorHex: string | null = null;
 
     if (newColor) {
-      // User clicked a preset color
       effectiveColorName = newColor.name;
       effectiveColorHex = newColor.hex;
       setSelectedColor(newColor);
-      setCustomColor(''); // Clear custom input if preset selected
+      setCustomColor(''); 
     } else if (newColor === null) {
-      // User clicked "Original Finish"
       effectiveColorName = null;
       effectiveColorHex = null;
       setSelectedColor(null);
       setCustomColor('');
     } else {
-      // Use existing state
       if (customColor.trim()) {
         effectiveColorName = customColor;
       } else if (selectedColor) {
@@ -169,7 +107,6 @@ const App: React.FC = () => {
       }
     }
 
-    // Check valid actions
     const hasColor = !!effectiveColorName;
     const hasHardware = hardwareToUse.id !== 'none';
     const hasInstruction = customInstruction.trim().length > 0;
@@ -180,10 +117,8 @@ const App: React.FC = () => {
       return;
     }
 
-    // If hardware was passed, update state
     if (newHardware) setSelectedHardware(newHardware);
 
-    // 4. Determine Loading Message
     let msg = specificMessage || "Processing...";
     if (!specificMessage) {
        if (newColor) msg = `Applying ${newColor.name}...`;
@@ -193,7 +128,6 @@ const App: React.FC = () => {
     }
     setLoadingMessage(msg);
 
-    // 5. Scroll to results immediately
     if (resultsRef.current) {
       resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -215,10 +149,6 @@ const App: React.FC = () => {
       setStatus('complete');
     } catch (err: any) {
       console.error(err);
-      if (checkAuthError(err)) {
-        setStatus('idle');
-        return;
-      }
       const errorMessage = err.message || JSON.stringify(err);
       setError(`Generation Failed: ${errorMessage}`);
       setStatus('idle');
@@ -228,7 +158,7 @@ const App: React.FC = () => {
   const handleCustomColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCustomColor(e.target.value);
     if (e.target.value.trim().length > 0) {
-      setSelectedColor(null); // Deselect preset if user types custom
+      setSelectedColor(null);
     }
   };
 
@@ -248,7 +178,6 @@ const App: React.FC = () => {
     if (cameraInputRef.current) cameraInputRef.current.value = '';
   };
 
-  // Determine Active Color for passing to the ImageComparator
   const getActiveColorForDisplay = () => {
     if (customColor) return { name: customColor };
     if (selectedColor) return selectedColor;
@@ -257,49 +186,6 @@ const App: React.FC = () => {
 
   if (checkingKey) {
     return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500">Loading...</div>;
-  }
-
-  if (!hasKey) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white max-w-md w-full rounded-2xl shadow-xl p-8 text-center border border-slate-200">
-          <div className="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Key className="w-8 h-8 text-indigo-600" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-3">Setup Required</h2>
-          
-          {isAIStudio ? (
-            <>
-              <p className="text-slate-600 mb-6 leading-relaxed">
-                To generate high-quality 4K interior designs, you need to connect a paid Google Cloud Project.
-              </p>
-              <button
-                onClick={handleSelectKey}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-xl transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"
-              >
-                Connect Google Cloud Project
-              </button>
-              <div className="mt-6 text-xs text-slate-400">
-                <a 
-                  href="https://ai.google.dev/gemini-api/docs/billing" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="hover:text-indigo-600 underline"
-                >
-                  Learn more about billing
-                </a>
-              </div>
-            </>
-          ) : (
-            <div className="text-left bg-slate-50 p-4 rounded-lg border border-slate-200 text-sm text-slate-600">
-              <p className="mb-2 font-semibold text-slate-800">API Key Missing</p>
-              <p className="mb-2">This application requires a Gemini API Key to function.</p>
-              <p>If you are the site owner, please configure the <code className="bg-slate-200 px-1 rounded">API_KEY</code> environment variable in your hosting provider settings.</p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -333,11 +219,6 @@ const App: React.FC = () => {
           <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
             <p className="text-red-700 text-sm flex-1 break-words">{error}</p>
-            {isAIStudio && error.includes("Permission") && (
-               <button onClick={handleSelectKey} className="text-xs underline text-red-800 font-semibold ml-auto whitespace-nowrap">
-                 Change Key
-               </button>
-            )}
           </div>
         )}
 
