@@ -5,8 +5,10 @@ import { POPULAR_COLORS, HARDWARE_OPTIONS } from './constants';
 import { ColorOption, HardwareOption, ProcessingState } from './types';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { ImageComparator } from './components/ImageComparator';
+import { EmailGateModal } from './components/EmailGateModal';
 
 const SHEEN_OPTIONS = ['Default', 'Matte', 'Satin', 'Semi-Gloss', 'High-Gloss'];
+const GENERATION_LIMIT = 3;
 
 const App: React.FC = () => {
   const [hasKey, setHasKey] = useState<boolean>(true);
@@ -28,15 +30,65 @@ const App: React.FC = () => {
   const [customInstruction, setCustomInstruction] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   
+  // Gating State
+  const [generationCount, setGenerationCount] = useState<number>(0);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [showEmailGate, setShowEmailGate] = useState<boolean>(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // In the downloaded version, we rely on standard env var
-    setHasKey(!!process.env.API_KEY || false);
-    setCheckingKey(false);
+    // Check API Key
+    const checkApiKey = async () => {
+      try {
+        const aistudio = (window as any).aistudio;
+        if (aistudio) {
+          setIsAIStudio(true);
+          if (aistudio.hasSelectedApiKey) {
+            const hasSelected = await aistudio.hasSelectedApiKey();
+            setHasKey(hasSelected);
+          } else {
+             setHasKey(false);
+          }
+        } else {
+          setIsAIStudio(false);
+          // In standard web, use env var
+          // In downloaded Clean Build, we expect import.meta.env.VITE_API_KEY
+          const envKey = (import.meta as any).env?.VITE_API_KEY || process.env.API_KEY;
+          setHasKey(!!envKey);
+        }
+      } catch (e) {
+        console.error("Error checking API key:", e);
+      } finally {
+        setCheckingKey(false);
+      }
+    };
+    checkApiKey();
+
+    // Load Gating Info
+    const storedCount = localStorage.getItem('cabcoat_gen_count');
+    const storedEmail = localStorage.getItem('cabcoat_user_email');
+    if (storedCount) setGenerationCount(parseInt(storedCount, 10));
+    if (storedEmail) setUserEmail(storedEmail);
+
   }, []);
+
+  const handleSelectKey = async () => {
+    const aistudio = (window as any).aistudio;
+    if (aistudio && aistudio.openSelectKey) {
+      await aistudio.openSelectKey();
+      setHasKey(true);
+      setError(null);
+    }
+  };
+
+  const handleUnlock = (email: string) => {
+    localStorage.setItem('cabcoat_user_email', email);
+    setUserEmail(email);
+    setShowEmailGate(false);
+  };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -82,6 +134,12 @@ const App: React.FC = () => {
   ) => {
     if (!image) return;
     if (document.activeElement instanceof HTMLElement) { document.activeElement.blur(); }
+
+    // Check Gating
+    if (!userEmail && generationCount >= GENERATION_LIMIT) {
+      setShowEmailGate(true);
+      return;
+    }
 
     const hardwareToUse = newHardware || selectedHardware;
 
@@ -147,6 +205,14 @@ const App: React.FC = () => {
       
       setGeneratedImage(newImageBase64);
       setStatus('complete');
+      
+      // Increment Count
+      if (!userEmail) {
+        const newCount = generationCount + 1;
+        setGenerationCount(newCount);
+        localStorage.setItem('cabcoat_gen_count', newCount.toString());
+      }
+
     } catch (err: any) {
       console.error(err);
       const errorMessage = err.message || JSON.stringify(err);
@@ -188,9 +254,32 @@ const App: React.FC = () => {
     return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500">Loading...</div>;
   }
 
+  if (!hasKey) {
+     return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white max-w-md w-full rounded-2xl shadow-xl p-8 text-center border border-slate-200">
+          <div className="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Key className="w-8 h-8 text-indigo-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-3">Setup Required</h2>
+          {isAIStudio ? (
+            <button onClick={handleSelectKey} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-xl">Connect Google Cloud Project</button>
+          ) : (
+             <div className="text-left bg-slate-50 p-4 rounded-lg border border-slate-200 text-sm text-slate-600">
+              <p className="mb-2 font-semibold text-slate-800">API Key Missing</p>
+              <p>Please configure the <code className="bg-slate-200 px-1 rounded">VITE_API_KEY</code> environment variable in Vercel.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 selection:bg-indigo-100 selection:text-indigo-900">
       
+      {showEmailGate && <EmailGateModal onUnlock={handleUnlock} />}
+
       <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">

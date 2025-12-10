@@ -3,8 +3,6 @@ export interface ColorOption {
   hex: string;
   description?: string;
   isAI?: boolean;
-  manufacturer?: string;
-  code?: string;
 }
 
 export interface HardwareOption {
