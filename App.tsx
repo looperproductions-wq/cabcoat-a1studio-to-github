@@ -14,7 +14,7 @@ import { PromotionalVideoGuide } from './components/PromotionalVideoGuide';
 
 const SHEEN_OPTIONS = ['Default', 'Matte', 'Satin', 'Semi-Gloss', 'High-Gloss'];
 const GENERATION_LIMIT = 2;
-const APP_VERSION = 'v1.2.5';
+const APP_VERSION = 'v1.2.6';
 
 const App: React.FC = () => {
   const [maintenanceMode, setMaintenanceMode] = useState<boolean>(false);

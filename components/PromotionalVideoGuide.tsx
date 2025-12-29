@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { X, Video, Mic, Monitor, MousePointer, Layout, ArrowRight } from 'lucide-react';
 
@@ -118,7 +119,7 @@ export const PromotionalVideoGuide: React.FC<PromotionalVideoGuideProps> = ({ on
                         <ArrowRight className="w-4 h-4 text-slate-400" /> Rapid Fire
                       </h4>
                       <p className="text-sm text-slate-600 mt-1">
-                        Quick cuts of clicking different color bubbles: Green -> Blue -> Black.
+                        Quick cuts of clicking different color bubbles: Green → Blue → Black.
                       </p>
                     </div>
                  </div>

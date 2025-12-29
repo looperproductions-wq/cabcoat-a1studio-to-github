@@ -9,7 +9,7 @@ interface DeploymentGuideProps {
 export const DeploymentGuide: React.FC<DeploymentGuideProps> = ({ onClose }) => {
   const [copied, setCopied] = useState(false);
   const [isZipping, setIsZipping] = useState(false);
-  const currentVersion = "1.2.5";
+  const currentVersion = "1.2.6";
 
   // Dynamically load JSZip if not present
   React.useEffect(() => {
@@ -81,7 +81,7 @@ export const DeploymentGuide: React.FC<DeploymentGuideProps> = ({ onClose }) => 
 
       const components = src.folder("components");
 
-      // Bundle core App.tsx with current logic
+      // Bundle core App.tsx with current logic and correct version
       src.file("App.tsx", `import React, { useState, useRef, useEffect } from 'react';
 import { Upload, PaintBucket, Sparkles, RefreshCw, AlertCircle, Check, Key, MessageSquarePlus, PenTool, Ban, Palette, Droplet, Camera, Zap, ShoppingBag, ExternalLink } from 'lucide-react';
 import { fileToBase64, analyzeKitchenAndSuggestColors, generateCabinetPreview } from './services/geminiService';
@@ -91,6 +91,8 @@ import { LoadingOverlay } from './components/LoadingOverlay';
 import { ImageComparator } from './components/ImageComparator';
 import { EmailGateModal } from './components/EmailGateModal';
 import { MaintenanceScreen } from './components/MaintenanceScreen';
+
+const APP_VERSION = 'v${currentVersion}';
 
 const App: React.FC = () => {
   const [image, setImage] = useState(null);
@@ -116,10 +118,9 @@ const App: React.FC = () => {
         <h1 className="font-bold flex items-center gap-2"><PaintBucket /> CabCoat AI</h1>
       </header>
       <main className="max-w-6xl mx-auto p-8">
-        {/* Core application UI here */}
         <p className="text-slate-500">System Ready (v${currentVersion})</p>
       </main>
-      <footer className="fixed bottom-4 left-4 opacity-50 text-[10px]">v${currentVersion}</footer>
+      <footer className="fixed bottom-4 left-4 opacity-50 text-[10px] uppercase tracking-widest">{APP_VERSION}</footer>
       <footer className="fixed bottom-4 right-4 text-[10px] font-bold uppercase tracking-widest"><a href="https://cabcoat.com">cabcoat.com</a></footer>
     </div>
   );
