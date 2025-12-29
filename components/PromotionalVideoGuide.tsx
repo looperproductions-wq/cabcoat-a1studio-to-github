@@ -119,7 +119,7 @@ export const PromotionalVideoGuide: React.FC<PromotionalVideoGuideProps> = ({ on
                         <ArrowRight className="w-4 h-4 text-slate-400" /> Rapid Fire
                       </h4>
                       <p className="text-sm text-slate-600 mt-1">
-                        Quick cuts of clicking different color bubbles: Green → Blue → Black.
+                        Quick cuts of clicking different color bubbles: Green {"\u2192"} Blue {"\u2192"} Black.
                       </p>
                     </div>
                  </div>
@@ -132,10 +132,7 @@ export const PromotionalVideoGuide: React.FC<PromotionalVideoGuideProps> = ({ on
         </div>
         
         <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end">
-           <button 
-            onClick={onClose}
-            className="px-6 py-2 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-lg transition-colors"
-          >
+           <button onClick={onClose} className="px-6 py-2 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-lg transition-colors">
             Got it, ready to record
           </button>
         </div>

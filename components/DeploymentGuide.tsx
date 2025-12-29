@@ -9,7 +9,7 @@ interface DeploymentGuideProps {
 export const DeploymentGuide: React.FC<DeploymentGuideProps> = ({ onClose }) => {
   const [copied, setCopied] = useState(false);
   const [isZipping, setIsZipping] = useState(false);
-  const currentVersion = "1.2.6";
+  const currentVersion = "1.3.0";
 
   // Dynamically load JSZip if not present
   React.useEffect(() => {
@@ -100,7 +100,6 @@ const App: React.FC = () => {
   const [status, setStatus] = useState('idle');
   const [selectedColor, setSelectedColor] = useState(null);
   const [userEmail, setUserEmail] = useState(localStorage.getItem('cabcoat_user_email'));
-  const [showEmailGate, setShowEmailGate] = useState(false);
 
   useEffect(() => {
     const envKey = (import.meta as any).env?.VITE_API_KEY || process.env.API_KEY;
@@ -109,7 +108,7 @@ const App: React.FC = () => {
 
   const getSamplizeLink = (color) => {
     const query = encodeURIComponent(\`\${color.name} \${color.manufacturer || ''}\`);
-    return \`https://www.samplize.com/search?q=\${query}\`;
+    return \`https://www.samplize.com/pages/search/?query=\${query}\`;
   };
 
   return (
@@ -117,8 +116,12 @@ const App: React.FC = () => {
       <header className="bg-white border-b h-16 flex items-center px-4 justify-between">
         <h1 className="font-bold flex items-center gap-2"><PaintBucket /> CabCoat AI</h1>
       </header>
-      <main className="max-w-6xl mx-auto p-8">
-        <p className="text-slate-500">System Ready (v${currentVersion})</p>
+      <main className="relative min-h-[calc(100vh-64px)] flex flex-col items-center justify-center bg-slate-900">
+        <h2 className="text-8xl font-black text-white mb-8 tracking-tighter text-center">Visualize Your Dream Kitchen</h2>
+        <p className="text-2xl text-slate-400 mb-12 text-center">Try the interactive visualizer. (v${currentVersion})</p>
+        <div className="flex justify-center gap-6">
+            <button className="bg-indigo-600 text-white px-10 py-6 rounded-2xl font-bold text-2xl shadow-xl">Upload Photo</button>
+        </div>
       </main>
       <footer className="fixed bottom-4 left-4 opacity-50 text-[10px] uppercase tracking-widest">{APP_VERSION}</footer>
       <footer className="fixed bottom-4 right-4 text-[10px] font-bold uppercase tracking-widest"><a href="https://cabcoat.com">cabcoat.com</a></footer>
@@ -174,11 +177,7 @@ export default App;`);
                 <p className="text-slate-600 text-sm mb-6">
                   Get the complete React source code for this application, pre-configured for Vercel.
                 </p>
-                <button 
-                  onClick={handleDownload}
-                  disabled={isZipping}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
-                >
+                <button onClick={handleDownload} disabled={isZipping} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50">
                   {isZipping ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
                   {isZipping ? "Bundling..." : "Download ZIP"}
                 </button>
@@ -216,11 +215,7 @@ export default App;`);
                   <pre className="bg-slate-900 text-slate-300 p-4 rounded-lg text-xs overflow-x-auto font-mono leading-relaxed border border-slate-700">
                     {embedCode}
                   </pre>
-                  <button 
-                    onClick={handleCopy}
-                    className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white p-2 rounded-md transition-colors backdrop-blur"
-                    title="Copy to clipboard"
-                  >
+                  <button onClick={handleCopy} className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white p-2 rounded-md transition-colors backdrop-blur" title="Copy to clipboard">
                     {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                   </button>
                 </div>
@@ -239,10 +234,7 @@ export default App;`);
         </div>
         
         <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end">
-           <button 
-            onClick={onClose}
-            className="px-6 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium rounded-lg transition-colors"
-          >
+           <button onClick={onClose} className="px-6 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium rounded-lg transition-colors">
             Close
           </button>
         </div>

@@ -13,6 +13,7 @@ export const ImageComparator: React.FC<ImageComparatorProps> = ({ originalImage,
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  // Initializing dragStart with a static object { x: 0, y: 0 } instead of trying to access 'e' which is undefined here
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   
   const containerRef = useRef<HTMLDivElement>(null);

@@ -19,15 +19,15 @@ export const fileToBase64 = (file: File): Promise<string> => {
 };
 
 /**
- * Analyzes the kitchen image to suggest colors using Gemini 2.5 Flash
+ * Analyzes the kitchen image to suggest colors using Gemini 3 Flash Preview
  */
 export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promise<AnalysisResult> => {
-  const envKey = (import.meta as any).env?.VITE_API_KEY || process.env.API_KEY;
-  const ai = new GoogleGenAI({ apiKey: envKey });
+  // Directly using process.env.API_KEY as per guidelines
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-flash-preview", // Updated to recommended model for basic text/analysis tasks
       contents: {
         parts: [
           {
@@ -88,8 +88,8 @@ export const generateCabinetPreview = async (
   customInstruction?: string,
   sheen?: string
 ): Promise<string> => {
-  const envKey = (import.meta as any).env?.VITE_API_KEY || process.env.API_KEY;
-  const ai = new GoogleGenAI({ apiKey: envKey });
+  // Creating a new instance right before the call ensures it uses the most up-to-date API key
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   try {
     let prompt = `Edit this kitchen image with professional cabinet painting results.`;
