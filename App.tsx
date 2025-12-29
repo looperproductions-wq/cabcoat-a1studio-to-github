@@ -12,7 +12,7 @@ import { DeploymentGuide } from './components/DeploymentGuide';
 import { ProcessInfographic } from './components/ProcessInfographic';
 import { PromotionalVideoGuide } from './components/PromotionalVideoGuide';
 
-// Fix: Augment global AIStudio interface instead of redeclaring aistudio on Window to avoid modifier and type conflicts.
+// Fix: Augment global AIStudio interface for toolkit purposes
 declare global {
   interface AIStudio {
     hasSelectedApiKey: () => Promise<boolean>;
@@ -22,15 +22,10 @@ declare global {
 
 const SHEEN_OPTIONS = ['Default', 'Matte', 'Satin', 'Semi-Gloss', 'High-Gloss'];
 const GENERATION_LIMIT = 2;
-const APP_VERSION = 'v1.3.7';
+const APP_VERSION = 'v1.4.0';
 
-/** 
- * HOW TO USE YOUR OWN PHOTOS:
- * Replace these two URLs with direct links to your own "Before" and "After" photos.
- * They should ideally be the same angle for the best slider effect.
- */
-const BEFORE_IMG = "https://images.unsplash.com/photo-1594901597593-3796d194f48b?q=80&w=2070&auto=format&fit=crop"; // Brown/Oak dated kitchen
-const AFTER_IMG = "https://images.unsplash.com/photo-1556912178-0810795c3702?q=80&w=2070&auto=format&fit=crop"; // Modern White painted kitchen
+const BEFORE_IMG = "https://images.unsplash.com/photo-1594901597593-3796d194f48b?q=80&w=2070&auto=format&fit=crop"; 
+const AFTER_IMG = "https://images.unsplash.com/photo-1556912178-0810795c3702?q=80&w=2070&auto=format&fit=crop"; 
 
 const App: React.FC = () => {
   const [maintenanceMode, setMaintenanceMode] = useState<boolean>(false);
@@ -38,9 +33,6 @@ const App: React.FC = () => {
   const [showDeployment, setShowDeployment] = useState<boolean>(false);
   const [showInfographic, setShowInfographic] = useState<boolean>(false);
   const [showVideoGuide, setShowVideoGuide] = useState<boolean>(false);
-
-  const [hasKey, setHasKey] = useState<boolean>(false);
-  const [checkingKey, setCheckingKey] = useState<boolean>(true);
 
   const [image, setImage] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
@@ -68,29 +60,11 @@ const App: React.FC = () => {
   const resultsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const checkApiKey = async () => {
-      try {
-        const selected = await window.aistudio.hasSelectedApiKey();
-        setHasKey(selected);
-      } catch (e) {
-        console.error("Error checking API key:", e);
-        setHasKey(false);
-      } finally {
-        setCheckingKey(false);
-      }
-    };
-    checkApiKey();
-
     const storedCount = localStorage.getItem('cabcoat_gen_count');
     const storedEmail = localStorage.getItem('cabcoat_user_email');
     if (storedCount) setGenerationCount(parseInt(storedCount, 10));
     if (storedEmail) setUserEmail(storedEmail);
   }, []);
-
-  const handleOpenKeySelector = async () => {
-    await window.aistudio.openSelectKey();
-    setHasKey(true);
-  };
 
   if (maintenanceMode) {
     return (
@@ -227,12 +201,7 @@ const App: React.FC = () => {
       }
     } catch (err: any) {
       console.error(err);
-      if (err.message?.includes("Requested entity was not found")) {
-          setHasKey(false);
-          setError("Session expired or API key issue. Please re-select your key.");
-      } else {
-          setError(`Generation Failed: ${err.message}`);
-      }
+      setError(`Generation Failed: ${err.message}`);
       setStatus('idle');
     }
   };
@@ -267,40 +236,6 @@ const App: React.FC = () => {
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSliderPos(parseInt(e.target.value));
   };
-
-  if (checkingKey) {
-    return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500">Loading...</div>;
-  }
-
-  if (!hasKey) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white max-w-md w-full rounded-2xl shadow-xl p-8 text-center border border-slate-200">
-          <div className="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Key className="w-8 h-8 text-indigo-600" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-3">API Key Selection</h2>
-          <p className="text-slate-600 mb-6 text-sm">
-            This tool uses high-quality AI models. Please select a valid API key from a paid GCP project to continue.
-          </p>
-          <button 
-            onClick={handleOpenKeySelector}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg active:scale-95 mb-4"
-          >
-            Select API Key
-          </button>
-          <a 
-            href="https://ai.google.dev/gemini-api/docs/billing" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-xs text-indigo-600 hover:underline font-medium"
-          >
-            Learn about billing and project setup
-          </a>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-50 selection:bg-indigo-100 selection:text-indigo-900">
@@ -362,18 +297,18 @@ const App: React.FC = () => {
 
       {!image ? (
         <main className="relative min-h-[calc(100vh-64px)] flex flex-col items-center justify-center overflow-hidden">
-          {/* SLIDER LAYER: Positioned at the back, but interactive logic is at the top of this stack */}
+          {/* SLIDER LAYER: Positioned at the back */}
           <div className="absolute inset-0 z-0 bg-slate-900">
             <div className="relative w-full h-full overflow-hidden">
-              {/* After image is base. Note: alt is empty to avoid overlapping broken image text */}
-              <img src={AFTER_IMG} alt="" className="absolute inset-0 w-full h-full object-cover" />
+              {/* After image is base */}
+              <img src={AFTER_IMG} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
               
               {/* Before image is clipped on top */}
               <div 
                 className="absolute inset-0 w-full h-full overflow-hidden" 
                 style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}
               >
-                <img src={BEFORE_IMG} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                <img src={BEFORE_IMG} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
               </div>
               
               {/* Handle Line */}
@@ -389,7 +324,7 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              {/* Labels: Separated into distinct absolute containers to prevent ANY overlap */}
+              {/* Individual Labels to ensure no overlap and clean visuals */}
               <div className="absolute top-10 left-10 z-10 pointer-events-none">
                 <span className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full text-white text-[10px] font-black uppercase tracking-widest border border-white/20 whitespace-nowrap shadow-xl">
                   Before: Original Finish
@@ -397,7 +332,7 @@ const App: React.FC = () => {
               </div>
               
               <div className="absolute top-10 right-10 z-10 pointer-events-none">
-                <span className="bg-indigo-600 px-4 py-2 rounded-full text-white text-[10px] font-black uppercase tracking-widest shadow-xl ring-2 ring-indigo-500/50 whitespace-nowrap animate-pulse">
+                <span className="bg-indigo-600 px-4 py-2 rounded-full text-white text-[10px] font-black uppercase tracking-widest shadow-xl ring-2 ring-indigo-500/50 whitespace-nowrap">
                   After: CabCoat Pro Painted
                 </span>
               </div>
@@ -413,11 +348,11 @@ const App: React.FC = () => {
               />
             </div>
             
-            {/* Dark Gradient Overlay (Behind Text, In Front of Images) */}
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/30 to-slate-900/70 z-[5]" />
+            {/* Dark Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-slate-900/70 z-[5]" />
           </div>
 
-          {/* TEXT CONTENT LAYER: Set to pointer-events-none so mouse goes through to slider */}
+          {/* TEXT CONTENT LAYER */}
           <div className="relative z-40 max-w-6xl mx-auto px-4 py-20 text-center animate-fade-in flex flex-col items-center pointer-events-none">
             {error && (
               <div className="mb-8 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3 animate-shake max-w-xl mx-auto pointer-events-auto">
@@ -433,7 +368,6 @@ const App: React.FC = () => {
               Don't guess what your cabinets will look like. Upload a photo and see your home transformed in seconds with professional-grade AI.
             </p>
 
-            {/* Buttons: Fixed height, same row, single line text, pointer-events-auto to stay clickable */}
             <div className="flex flex-row gap-4 md:gap-6 justify-center w-full max-w-2xl mx-auto mb-16 pointer-events-auto">
                 <div className="relative group flex-1">
                   <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />

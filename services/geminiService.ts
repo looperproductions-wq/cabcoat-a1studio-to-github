@@ -27,7 +27,7 @@ export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promi
   
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview", // Updated to recommended model for basic text/analysis tasks
+      model: "gemini-3-flash-preview", 
       contents: {
         parts: [
           {
@@ -78,7 +78,7 @@ export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promi
 };
 
 /**
- * Generates a preview of the kitchen with new cabinet colors using Gemini 3 Pro Image Preview
+ * Generates a preview of the kitchen with new cabinet colors using Gemini 2.5 Flash Image
  */
 export const generateCabinetPreview = async (
   base64Image: string, 
@@ -124,7 +124,7 @@ export const generateCabinetPreview = async (
     prompt += ` Keep the countertops, backsplash, flooring, walls, appliances, and lighting identical to the original image. Ensure a photorealistic, high-resolution interior design result.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-image-preview',
+      model: 'gemini-2.5-flash-image', // Switched from 3 Pro to 2.5 Flash to remove mandatory key selection dialog
       contents: {
         parts: [
           {
