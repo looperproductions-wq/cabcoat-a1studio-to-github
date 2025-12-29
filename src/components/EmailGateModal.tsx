@@ -30,7 +30,7 @@ export const EmailGateModal: React.FC<EmailGateModalProps> = ({ onUnlock }) => {
         <div className="bg-indigo-600 p-6 text-center">
           <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm"><Lock className="w-8 h-8 text-white" /></div>
           <h2 className="text-2xl font-bold text-white">Unlock Unlimited Edits</h2>
-          <p className="text-indigo-100 mt-2 text-sm">You've used your 3 free preview designs.</p>
+          <p className="text-indigo-100 mt-2 text-sm">You've used your 2 free preview designs.</p>
         </div>
         <div className="p-8">
           <div className="space-y-4 mb-6">

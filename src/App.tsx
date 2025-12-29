@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, PaintBucket, Sparkles, RefreshCw, AlertCircle, Check, Key, MessageSquarePlus, PenTool, Ban, Palette, Droplet, Camera } from 'lucide-react';
+import { Upload, PaintBucket, Sparkles, RefreshCw, AlertCircle, Check, Key, MessageSquarePlus, PenTool, Ban, Palette, Droplet, Camera, Zap } from 'lucide-react';
 import { fileToBase64, analyzeKitchenAndSuggestColors, generateCabinetPreview } from './services/geminiService';
 import { POPULAR_COLORS, HARDWARE_OPTIONS } from './constants';
 import { ColorOption, HardwareOption, ProcessingState } from './types';
@@ -9,8 +9,8 @@ import { EmailGateModal } from './components/EmailGateModal';
 import { MaintenanceScreen } from './components/MaintenanceScreen';
 
 const SHEEN_OPTIONS = ['Default', 'Matte', 'Satin', 'Semi-Gloss', 'High-Gloss'];
-const GENERATION_LIMIT = 3;
-const MAINTENANCE_MODE = true;
+const GENERATION_LIMIT = 2;
+const MAINTENANCE_MODE = false;
 
 const App: React.FC = () => {
   if (MAINTENANCE_MODE) return <MaintenanceScreen />;
@@ -102,7 +102,7 @@ const App: React.FC = () => {
       <main className="max-w-6xl mx-auto px-4 py-8">
         {error && (<div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3"><AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" /><p className="text-red-700 text-sm flex-1 break-words">{error}</p></div>)}
         {!image ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center animate-fade-in"><div className="bg-indigo-50 w-24 h-24 rounded-full flex items-center justify-center mb-8 shadow-inner"><Upload className="w-10 h-10 text-indigo-600" /></div><h2 className="text-4xl font-extrabold text-slate-900 mb-4 tracking-tight">Visualize Your Dream Kitchen</h2><p className="text-lg text-slate-600 max-w-2xl mb-10 leading-relaxed">Upload a photo of your kitchen and instantly see how different cabinet colors transform the space using advanced AI.</p><div className="flex flex-col sm:flex-row gap-4 justify-center w-full max-w-md mx-auto"><div className="relative group flex-1"><input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileUpload} className="hidden" /><button onClick={() => fileInputRef.current?.click()} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-4 rounded-xl font-semibold text-lg shadow-lg shadow-indigo-200 transition-all hover:scale-105 flex items-center justify-center gap-3"><Upload className="w-5 h-5" /> Upload Photo</button></div><div className="relative group flex-1"><input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileUpload} className="hidden" /><button onClick={() => cameraInputRef.current?.click()} className="w-full bg-white hover:bg-slate-50 text-indigo-700 border-2 border-indigo-100 hover:border-indigo-200 px-6 py-4 rounded-xl font-semibold text-lg shadow-lg shadow-slate-100 transition-all hover:scale-105 flex items-center justify-center gap-3"><Camera className="w-5 h-5" /> Take Photo</button></div></div><p className="mt-4 text-xs text-slate-400 uppercase tracking-widest font-medium">Supported Formats: JPG, PNG</p></div>
+          <div className="flex flex-col items-center justify-center py-20 text-center animate-fade-in"><div className="bg-indigo-50 w-24 h-24 rounded-full flex items-center justify-center mb-8 shadow-inner"><Upload className="w-10 h-10 text-indigo-600" /></div><h2 className="text-4xl font-extrabold text-slate-900 mb-4 tracking-tight">Visualize Your Dream Kitchen</h2><p className="text-lg text-slate-600 max-w-2xl mb-6 leading-relaxed">Upload a photo of your kitchen and instantly see how different cabinet colors transform the space using advanced AI.</p><div className="flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2 rounded-full text-sm font-semibold mb-10 border border-indigo-100"><Zap className="w-4 h-4 fill-indigo-500" /> Free trial: 2 instant AI previews</div><div className="flex flex-col sm:flex-row gap-4 justify-center w-full max-w-md mx-auto"><div className="relative group flex-1"><input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileUpload} className="hidden" /><button onClick={() => fileInputRef.current?.click()} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-4 rounded-xl font-semibold text-lg shadow-lg shadow-indigo-200 transition-all hover:scale-105 flex items-center justify-center gap-3"><Upload className="w-5 h-5" /> Upload Photo</button></div><div className="relative group flex-1"><input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileUpload} className="hidden" /><button onClick={() => cameraInputRef.current?.click()} className="w-full bg-white hover:bg-slate-50 text-indigo-700 border-2 border-indigo-100 hover:border-indigo-200 px-6 py-4 rounded-xl font-semibold text-lg shadow-lg shadow-slate-100 transition-all hover:scale-105 flex items-center justify-center gap-3"><Camera className="w-5 h-5" /> Take Photo</button></div></div><p className="mt-4 text-xs text-slate-400 uppercase tracking-widest font-medium">Supported Formats: JPG, PNG</p></div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className="lg:col-span-8 space-y-6">
