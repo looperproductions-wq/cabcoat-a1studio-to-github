@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, PaintBucket, Sparkles, RefreshCw, AlertCircle, Check, MessageSquarePlus, PenTool, Ban, Palette, Droplet, Camera, Zap, Wrench, Layout, Video, Share2, ExternalLink, ShoppingBag } from 'lucide-react';
+import { Upload, PaintBucket, Sparkles, RefreshCw, AlertCircle, Check, MessageSquarePlus, PenTool, Ban, Palette, Droplet, Camera, Zap, Wrench, Layout, Video, Share2, ExternalLink, ShoppingBag, Key } from 'lucide-react';
 import { fileToBase64, analyzeKitchenAndSuggestColors, generateCabinetPreview } from './services/geminiService';
 import { POPULAR_COLORS, HARDWARE_OPTIONS } from './constants';
 import { ColorOption, HardwareOption, ProcessingState } from './types';
@@ -13,15 +13,15 @@ import { ProcessInfographic } from './components/ProcessInfographic';
 import { PromotionalVideoGuide } from './components/PromotionalVideoGuide';
 
 declare global {
-  interface AIStudio {
-    hasSelectedApiKey: () => Promise<boolean>;
-    openSelectKey: () => Promise<void>;
+  interface Window {
+    // Use the AIStudio type to match the existing declaration and avoid conflicts
+    aistudio: AIStudio;
   }
 }
 
 const SHEEN_OPTIONS = ['Default', 'Matte', 'Satin', 'Semi-Gloss', 'High-Gloss'];
 const GENERATION_LIMIT = 2;
-const APP_VERSION = 'v1.6.2';
+const APP_VERSION = 'v1.7.0';
 
 const HERO_BG = "https://images.unsplash.com/photo-1556912178-0810795c3702?q=80&w=2070&auto=format&fit=crop";
 
@@ -32,6 +32,7 @@ const App: React.FC = () => {
   const [showInfographic, setShowInfographic] = useState<boolean>(false);
   const [showVideoGuide, setShowVideoGuide] = useState<boolean>(false);
 
+  const [hasApiKey, setHasApiKey] = useState<boolean>(true);
   const [image, setImage] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [status, setStatus] = useState<ProcessingState>('idle');
@@ -56,6 +57,21 @@ const App: React.FC = () => {
   const resultsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const checkApiKeyStatus = async () => {
+      const envKey = process.env.API_KEY;
+      if (!envKey || envKey === "") {
+        if (window.aistudio) {
+          const selected = await window.aistudio.hasSelectedApiKey();
+          setHasApiKey(selected);
+        } else {
+          setHasApiKey(false);
+        }
+      } else {
+        setHasApiKey(true);
+      }
+    };
+    checkApiKeyStatus();
+
     const storedCount = localStorage.getItem('cabcoat_gen_count');
     const storedEmail = localStorage.getItem('cabcoat_user_email');
     if (storedCount) setGenerationCount(parseInt(storedCount, 10));
@@ -79,7 +95,7 @@ const App: React.FC = () => {
 
     try {
       setStatus('analyzing');
-      setLoadingMessage("Analyzing image...");
+      setLoadingMessage("Scanning kitchen elements...");
       setError(null);
       setGeneratedImage(null);
       
@@ -87,7 +103,7 @@ const App: React.FC = () => {
       const analysis = await analyzeKitchenAndSuggestColors(base64);
       
       if (!analysis.isKitchen) {
-        setError("Wait, that doesn't look like a kitchen! Our AI specializes in painting kitchen cabinets. Please upload a clear photo of your kitchen cabinets to continue.");
+        setError("Wait, that doesn't look like a kitchen! Our AI specializes in painting kitchen cabinets. Please upload a clear photo of your kitchen cabinets.");
         setStatus('idle');
         return;
       }
@@ -200,8 +216,6 @@ const App: React.FC = () => {
     setAnalysisReasoning('');
     setCustomInstruction('');
     setError(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    if (cameraInputRef.current) cameraInputRef.current.value = '';
   };
 
   const getActiveColorForDisplay = () => {
@@ -215,19 +229,7 @@ const App: React.FC = () => {
     return `https://www.samplize.com/pages/search/?query=${query}`;
   };
 
-  if (maintenanceMode) {
-    return (
-      <>
-        <MaintenanceScreen />
-        <button 
-          onClick={() => setMaintenanceMode(false)}
-          className="fixed bottom-4 right-4 bg-white/10 hover:bg-white/20 text-white/50 hover:text-white px-3 py-1 rounded-full text-xs transition-all z-[100] backdrop-blur-sm"
-        >
-          Exit Maintenance Mode
-        </button>
-      </>
-    );
-  }
+  if (maintenanceMode) return <MaintenanceScreen />;
 
   return (
     <div className="min-h-screen bg-slate-50 selection:bg-indigo-100 selection:text-indigo-900">
@@ -244,6 +246,14 @@ const App: React.FC = () => {
             </h1>
           </div>
           <div className="flex items-center gap-3">
+            {!hasApiKey && (
+              <button 
+                onClick={() => window.aistudio.openSelectKey()}
+                className="flex items-center gap-2 text-amber-600 bg-amber-50 px-3 py-1.5 rounded-full text-xs font-bold border border-amber-200 hover:bg-amber-100 transition-colors"
+              >
+                <Key className="w-3.5 h-3.5" /> Connect API
+              </button>
+            )}
             <button 
               onClick={() => setShowToolkit(!showToolkit)}
               className={`p-2 rounded-lg transition-all ${showToolkit ? 'bg-indigo-100 text-indigo-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
@@ -377,6 +387,7 @@ const App: React.FC = () => {
                 </div>
               )}
             </div>
+            
             <div className="lg:col-span-4 space-y-8">
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
@@ -419,7 +430,7 @@ const App: React.FC = () => {
               )}
 
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Top 10 Benjamin Moore Colors</h3>
+                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Top Benjamin Moore Colors</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <button onClick={() => handleGenerate(null, undefined, "Restoring original finish...")} disabled={status !== 'idle' && status !== 'complete'} className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-all ${selectedColor === null && !customColor ? 'border-indigo-600 bg-indigo-50 ring-1 ring-indigo-600' : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50'}`}>
                     <div className="w-12 h-12 rounded-full shadow-sm mb-2 border border-black/5 bg-gradient-to-br from-slate-100 to-slate-200 relative overflow-hidden flex items-center justify-center">
@@ -427,7 +438,7 @@ const App: React.FC = () => {
                     </div>
                     <span className="text-[11px] font-bold text-slate-700 text-center uppercase tracking-tight leading-none">Original<br/>Finish</span>
                   </button>
-                  {POPULAR_COLORS.map((color) => (
+                  {POPULAR_COLORS.slice(0, 9).map((color) => (
                     <div key={color.name} className="flex flex-col">
                       <button onClick={() => handleGenerate(color, undefined, `Applying ${color.name}...`)} disabled={status !== 'idle' && status !== 'complete'} className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-all h-full ${selectedColor?.name === color.name ? 'border-indigo-600 bg-indigo-50 ring-1 ring-indigo-600' : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50'}`}>
                         <div className="w-12 h-12 rounded-full shadow-sm mb-2 border border-black/5" style={{ backgroundColor: color.hex }} />

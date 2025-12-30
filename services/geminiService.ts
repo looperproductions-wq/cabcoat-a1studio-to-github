@@ -2,9 +2,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult } from "../types";
 
-/**
- * Helper to convert File to Base64
- */
 export const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -18,16 +15,14 @@ export const fileToBase64 = (file: File): Promise<string> => {
   });
 };
 
-/**
- * Analyzes the kitchen image to suggest colors using Gemini 3 Flash Preview
- */
 export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promise<AnalysisResult> => {
-  // Directly using process.env.API_KEY as per guidelines
+  // Always initialize right before use to get latest API key from the execution context
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   try {
+    // Using gemini-3-pro-preview for complex interior design analysis
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview", 
+      model: "gemini-3-pro-preview", 
       contents: {
         parts: [
           {
@@ -77,9 +72,6 @@ export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promi
   }
 };
 
-/**
- * Generates a preview of the kitchen with new cabinet colors using Gemini 2.5 Flash Image
- */
 export const generateCabinetPreview = async (
   base64Image: string, 
   colorName: string | null, 
@@ -88,43 +80,45 @@ export const generateCabinetPreview = async (
   customInstruction?: string,
   sheen?: string
 ): Promise<string> => {
-  // Creating a new instance right before the call ensures it uses the most up-to-date API key
+  // Always initialize right before use to ensure up-to-date environment variables
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   try {
     let prompt = `Edit this kitchen image with professional cabinet painting results.`;
     
     if (colorName) {
-      prompt += ` Paint the kitchen cabinets ${colorName}`;
+      prompt += ` Paint the kitchen cabinets exactly in the color "${colorName}"`;
       if (colorHex) {
-        prompt += ` (approximate hex: ${colorHex})`;
+        prompt += ` (reference hex code: ${colorHex})`;
       }
       prompt += `.`;
     } else {
-      prompt += ` Keep the existing cabinet color.`;
+      prompt += ` Keep the existing cabinet color but refresh the look.`;
     }
     
-    prompt += ` IMPORTANT TEXTURE HANDLING:
-    - If the original cabinets are OAK (heavy grain), preserve a subtle, sophisticated wood grain texture through the new paint.
-    - If the original cabinets are MAPLE, CHERRY, or smooth MDF, the new finish must be perfectly smooth with ABSOLUTELY NO wood grain or texture visible.
-    - Provide a high-end factory-painted look (like a professional lacquer finish).`;
-
-    if (sheen && sheen !== 'Default') {
-      prompt += ` Apply a ${sheen} finish to the cabinets.`;
-    }
+    prompt += ` 
+    TECHNICAL FINISH REQUIREMENTS:
+    - Provide a high-end, factory-smooth professional finish.
+    - If the cabinets are wood, ensure the paint looks like it was applied by a professional spray system (no brush marks).
+    - If the user specifies a sheen like ${sheen || 'Satin'}, adjust reflections accordingly.`;
 
     if (hardwareName && hardwareName !== 'Keep Existing') {
-      prompt += ` Replace the cabinet hardware with ${hardwareName}.`;
+      prompt += ` Replace the cabinet hardware with ${hardwareName}. Ensure the hardware is scaled correctly and matches the perspective of the doors.`;
     }
 
     if (customInstruction && customInstruction.trim().length > 0) {
-      prompt += ` Additional Design Notes: "${customInstruction}".`;
+      prompt += ` USER TWEAKS: "${customInstruction}".`;
     }
 
-    prompt += ` Keep the countertops, backsplash, flooring, walls, appliances, and lighting identical to the original image. Ensure a photorealistic, high-resolution interior design result.`;
+    prompt += ` 
+    CONSTRAINT:
+    - Do NOT change the countertops, flooring, backsplash, walls, or ceiling.
+    - The lighting of the room should remain consistent with the original photo.
+    - Output a photorealistic, 4K quality interior design visualization.`;
 
+    // Using gemini-3-pro-image-preview for requested 4K quality output
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image', // Switched from 3 Pro to 2.5 Flash to remove mandatory key selection dialog
+      model: 'gemini-3-pro-image-preview',
       contents: {
         parts: [
           {
@@ -138,6 +132,11 @@ export const generateCabinetPreview = async (
           },
         ],
       },
+      config: {
+        imageConfig: {
+          imageSize: "4K"
+        }
+      }
     });
 
     for (const part of response.candidates?.[0]?.content?.parts || []) {
