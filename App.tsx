@@ -12,12 +12,9 @@ import { DeploymentGuide } from './components/DeploymentGuide';
 import { ProcessInfographic } from './components/ProcessInfographic';
 import { PromotionalVideoGuide } from './components/PromotionalVideoGuide';
 
-// The window.aistudio property is pre-configured and injected by the environment as AIStudio type.
-// We remove the conflicting 'any' declaration and use casting for robust access.
-
 const SHEEN_OPTIONS = ['Default', 'Matte', 'Satin', 'Semi-Gloss', 'High-Gloss'];
 const GENERATION_LIMIT = 2;
-const APP_VERSION = 'v1.7.5';
+const APP_VERSION = 'v1.7.6';
 
 const HERO_BG = "https://images.unsplash.com/photo-1556912178-0810795c3702?q=80&w=2070&auto=format&fit=crop";
 
@@ -28,9 +25,6 @@ const App: React.FC = () => {
   const [showInfographic, setShowInfographic] = useState<boolean>(false);
   const [showVideoGuide, setShowVideoGuide] = useState<boolean>(false);
 
-  const [hasApiKey, setHasApiKey] = useState<boolean>(true);
-  const [checkingKey, setCheckingKey] = useState<boolean>(true);
-  
   const [image, setImage] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [status, setStatus] = useState<ProcessingState>('idle');
@@ -55,26 +49,6 @@ const App: React.FC = () => {
   const resultsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const checkApiKeyStatus = async () => {
-      setCheckingKey(true);
-      const envKey = process.env.API_KEY;
-      
-      // Fallback to window.aistudio if environment key is not present
-      if (!envKey || envKey === "") {
-        const aistudio = (window as any).aistudio;
-        if (aistudio) {
-          const selected = await aistudio.hasSelectedApiKey();
-          setHasApiKey(selected);
-        } else {
-          setHasApiKey(false);
-        }
-      } else {
-        setHasApiKey(true);
-      }
-      setCheckingKey(false);
-    };
-    checkApiKeyStatus();
-
     const storedCount = localStorage.getItem('cabcoat_gen_count');
     const storedEmail = localStorage.getItem('cabcoat_user_email');
     if (storedCount) setGenerationCount(parseInt(storedCount, 10));
@@ -85,8 +59,6 @@ const App: React.FC = () => {
     const aistudio = (window as any).aistudio;
     if (aistudio) {
       await aistudio.openSelectKey();
-      // Assume success as per guidelines to mitigate race condition between key selection and availability
-      setHasApiKey(true);
     }
   };
 
@@ -99,11 +71,6 @@ const App: React.FC = () => {
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
-    if (!hasApiKey) {
-      setError("Please connect your API key first using the blue 'Connect' button.");
-      return;
-    }
 
     try {
       setStatus('analyzing');
@@ -134,8 +101,7 @@ const App: React.FC = () => {
     } catch (err: any) {
       console.error(err);
       if (err.message && err.message.toLowerCase().includes("not found")) {
-        setHasApiKey(false);
-        setError("API Key session expired or not found. Please reconnect.");
+        setError("API Key error. Please ensure you have connected a valid Gemini API project.");
       } else {
         setError(`Analysis Failed: ${err.message}`);
       }
@@ -217,8 +183,7 @@ const App: React.FC = () => {
     } catch (err: any) {
       console.error(err);
       if (err.message && err.message.toLowerCase().includes("not found")) {
-        setHasApiKey(false);
-        setError("API Key session expired or not found. Please reconnect.");
+        setError("API Session expired or key missing. Please check your configuration.");
       } else {
         setError(`Generation Failed: ${err.message}`);
       }
@@ -268,14 +233,12 @@ const App: React.FC = () => {
             </h1>
           </div>
           <div className="flex items-center gap-3">
-            {!hasApiKey && !checkingKey && (
-              <button 
-                onClick={handleConnectKey}
-                className="flex items-center gap-2 text-white bg-indigo-600 px-4 py-2 rounded-full text-xs font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95"
-              >
-                <Key className="w-3.5 h-3.5" /> Connect API
-              </button>
-            )}
+            <button 
+              onClick={handleConnectKey}
+              className="flex items-center gap-2 text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full text-xs font-bold border border-indigo-100 hover:bg-indigo-100 transition-colors"
+            >
+              <Key className="w-3.5 h-3.5" /> API Config
+            </button>
             <button 
               onClick={() => setShowToolkit(!showToolkit)}
               className={`p-2 rounded-lg transition-all ${showToolkit ? 'bg-indigo-100 text-indigo-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
@@ -326,74 +289,49 @@ const App: React.FC = () => {
           </div>
 
           <div className="relative z-10 max-w-6xl mx-auto px-4 py-20 text-center animate-fade-in flex flex-col items-center">
-            {!hasApiKey && !checkingKey && (
-              <div className="mb-12 bg-white/95 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-indigo-100 max-w-lg animate-in fade-in zoom-in duration-500">
-                <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-600">
-                  <Key className="w-8 h-8" />
-                </div>
-                <h3 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">One Last Step...</h3>
-                <p className="text-slate-600 mb-8 leading-relaxed">
-                  To use high-quality 4K AI generation, you need to connect your Gemini API project.
-                </p>
-                <button 
-                  onClick={handleConnectKey}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 shadow-xl shadow-indigo-200 transition-all hover:scale-[1.02] active:scale-95"
-                >
-                  Connect API to Begin <ChevronRight className="w-5 h-5" />
-                </button>
-                <p className="mt-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                  Requires Paid Billing Project (ai.google.dev/docs/billing)
-                </p>
+            {error && (
+              <div className="mb-8 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3 animate-shake max-w-xl mx-auto">
+                <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                <p className="text-red-700 text-sm flex-1 break-words font-medium">{error}</p>
               </div>
             )}
 
-            {hasApiKey && (
-              <>
-                {error && (
-                  <div className="mb-8 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3 animate-shake max-w-xl mx-auto">
-                    <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
-                    <p className="text-red-700 text-sm flex-1 break-words font-medium">{error}</p>
-                  </div>
-                )}
+            <h2 className="text-5xl md:text-8xl font-black text-white mb-6 tracking-tighter leading-[0.9] drop-shadow-2xl">
+              Preview Your Kitchen <br/><span className="text-indigo-400">Before You Paint.</span>
+            </h2>
+            <p className="text-xl md:text-2xl text-slate-300 max-w-3xl mb-12 leading-relaxed font-light drop-shadow-md">
+              The professional visualization tool for homeowners. Upload a photo and see your cabinets transformed in seconds.
+            </p>
 
-                <h2 className="text-5xl md:text-8xl font-black text-white mb-6 tracking-tighter leading-[0.9] drop-shadow-2xl">
-                  Preview Your Kitchen <br/><span className="text-indigo-400">Before You Paint.</span>
-                </h2>
-                <p className="text-xl md:text-2xl text-slate-300 max-w-3xl mb-12 leading-relaxed font-light drop-shadow-md">
-                  The professional visualization tool for homeowners. Upload a photo and see your cabinets transformed in seconds.
-                </p>
-
-                <div className="flex flex-col sm:flex-row gap-4 md:gap-6 justify-center w-full max-w-2xl mx-auto mb-16">
-                    <div className="relative group flex-1">
-                      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
-                      <button 
-                        onClick={() => fileInputRef.current?.click()} 
-                        disabled={status === 'analyzing'} 
-                        className="w-full h-20 bg-indigo-600 hover:bg-indigo-700 text-white px-8 rounded-2xl font-bold text-xl md:text-2xl shadow-2xl transition-all hover:scale-[1.03] active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
-                      >
-                        {status === 'analyzing' ? <RefreshCw className="w-7 h-7 animate-spin" /> : <Upload className="w-7 h-7" />}
-                        <span>{status === 'analyzing' ? "Analyzing..." : "Upload Photo"}</span>
-                      </button>
-                    </div>
-                    <div className="relative group flex-1">
-                      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileUpload} className="hidden" />
-                      <button 
-                        onClick={() => cameraInputRef.current?.click()} 
-                        disabled={status === 'analyzing'} 
-                        className="w-full h-20 bg-white hover:bg-slate-50 text-slate-900 px-8 rounded-2xl font-bold text-xl md:text-2xl shadow-2xl transition-all hover:scale-[1.03] active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
-                      >
-                        <Camera className="w-7 h-7 text-indigo-600" />
-                        <span>Take Photo</span>
-                      </button>
-                    </div>
+            <div className="flex flex-col sm:flex-row gap-4 md:gap-6 justify-center w-full max-w-2xl mx-auto mb-16">
+                <div className="relative group flex-1">
+                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
+                  <button 
+                    onClick={() => fileInputRef.current?.click()} 
+                    disabled={status === 'analyzing'} 
+                    className="w-full h-20 bg-indigo-600 hover:bg-indigo-700 text-white px-8 rounded-2xl font-bold text-xl md:text-2xl shadow-2xl transition-all hover:scale-[1.03] active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
+                  >
+                    {status === 'analyzing' ? <RefreshCw className="w-7 h-7 animate-spin" /> : <Upload className="w-7 h-7" />}
+                    <span>{status === 'analyzing' ? "Analyzing..." : "Upload Photo"}</span>
+                  </button>
                 </div>
-
-                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-xl text-white px-6 py-3 rounded-full text-sm font-bold shadow-2xl border border-white/20">
-                  <Zap className="w-4 h-4 fill-amber-400 text-amber-400" />
-                  Advanced AI: Professional Wood Finish Simulation
+                <div className="relative group flex-1">
+                  <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileUpload} className="hidden" />
+                  <button 
+                    onClick={() => cameraInputRef.current?.click()} 
+                    disabled={status === 'analyzing'} 
+                    className="w-full h-20 bg-white hover:bg-slate-50 text-slate-900 px-8 rounded-2xl font-bold text-xl md:text-2xl shadow-2xl transition-all hover:scale-[1.03] active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
+                  >
+                    <Camera className="w-7 h-7 text-indigo-600" />
+                    <span>Take Photo</span>
+                  </button>
                 </div>
-              </>
-            )}
+            </div>
+
+            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-xl text-white px-6 py-3 rounded-full text-sm font-bold shadow-2xl border border-white/20">
+              <Zap className="w-4 h-4 fill-amber-400 text-amber-400" />
+              Advanced AI: Professional Wood Finish Simulation
+            </div>
             
             <p className="mt-8 text-[10px] text-slate-400 font-black uppercase tracking-[0.4em] drop-shadow-md">DEVELOPED BY RICK LYNCH</p>
           </div>
