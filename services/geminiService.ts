@@ -116,7 +116,7 @@ export const generateCabinetPreview = async (
     - The lighting of the room should remain consistent with the original photo.
     - Output a photorealistic, 4K quality interior design visualization.`;
 
-    // Using gemini-3-pro-image-preview for requested 4K quality output
+    // Using gemini-3-pro-image-preview for high quality output
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-image-preview',
       contents: {
