@@ -15,14 +15,24 @@ export const fileToBase64 = (file: File): Promise<string> => {
   });
 };
 
+/**
+ * Helper to get a fresh AI instance.
+ * Using a function ensures we get the most up-to-date API_KEY from the environment.
+ */
+const getAIInstance = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey || apiKey.trim() === "") {
+    throw new Error("API Key missing. If you are on Vercel, please set the API_KEY environment variable. If you are in the design tool, please click 'Connect Design Engine'.");
+  }
+  return new GoogleGenAI({ apiKey });
+};
+
 export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promise<AnalysisResult> => {
-  // Always initialize right before use to get latest API key from the execution context
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAIInstance();
   
   try {
-    // Using gemini-3-pro-preview for complex interior design analysis
     const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview", 
+      model: "gemini-3-flash-preview", 
       contents: {
         parts: [
           {
@@ -80,43 +90,38 @@ export const generateCabinetPreview = async (
   customInstruction?: string,
   sheen?: string
 ): Promise<string> => {
-  // Always initialize right before use to ensure up-to-date environment variables
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAIInstance();
 
   try {
     let prompt = `Edit this kitchen image with professional cabinet painting results.`;
     
     if (colorName) {
-      prompt += ` Paint the kitchen cabinets exactly in the color "${colorName}"`;
+      prompt += ` Paint the kitchen cabinets in "${colorName}"`;
       if (colorHex) {
         prompt += ` (reference hex code: ${colorHex})`;
       }
       prompt += `.`;
     } else {
-      prompt += ` Keep the existing cabinet color but refresh the look.`;
+      prompt += ` Keep existing color but refresh the finish.`;
     }
     
     prompt += ` 
-    TECHNICAL FINISH REQUIREMENTS:
-    - Provide a high-end, factory-smooth professional finish.
-    - If the cabinets are wood, ensure the paint looks like it was applied by a professional spray system (no brush marks).
-    - If the user specifies a sheen like ${sheen || 'Satin'}, adjust reflections accordingly.`;
+    TECHNICAL REQUIREMENTS:
+    - High-end factory-smooth sprayed finish.
+    - Sheen: ${sheen || 'Satin'}.
+    - Lighting must remain consistent with original photo.
+    - Perspective and shadows must be realistic.`;
 
     if (hardwareName && hardwareName !== 'Keep Existing') {
-      prompt += ` Replace the cabinet hardware with ${hardwareName}. Ensure the hardware is scaled correctly and matches the perspective of the doors.`;
+      prompt += ` Replace hardware with ${hardwareName}.`;
     }
 
-    if (customInstruction && customInstruction.trim().length > 0) {
-      prompt += ` USER TWEAKS: "${customInstruction}".`;
+    if (customInstruction && customInstruction.trim()) {
+      prompt += ` User tweaks: "${customInstruction}".`;
     }
 
-    prompt += ` 
-    CONSTRAINT:
-    - Do NOT change the countertops, flooring, backsplash, walls, or ceiling.
-    - The lighting of the room should remain consistent with the original photo.
-    - Output a photorealistic, 4K quality interior design visualization.`;
+    prompt += ` Constraint: Only change the cabinets. Do not alter floors, walls, or appliances. Photorealistic 4K quality.`;
 
-    // Using gemini-3-pro-image-preview for high quality output
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-image-preview',
       contents: {
@@ -134,6 +139,7 @@ export const generateCabinetPreview = async (
       },
       config: {
         imageConfig: {
+          aspectRatio: "1:1",
           imageSize: "4K"
         }
       }
@@ -145,7 +151,7 @@ export const generateCabinetPreview = async (
       }
     }
 
-    throw new Error("No image generated in response");
+    throw new Error("AI did not return an image. Please check your instructions.");
   } catch (error) {
     console.error("Error generating preview:", error);
     throw error;
