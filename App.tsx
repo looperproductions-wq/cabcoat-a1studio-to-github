@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, PaintBucket, Sparkles, RefreshCw, AlertCircle, Check, Key, MessageSquarePlus, PenTool, Ban, Palette, Droplet, Camera, Zap, Wrench, Layout, Video, Share2, ExternalLink, ShoppingBag } from 'lucide-react';
+import { Upload, PaintBucket, Sparkles, RefreshCw, AlertCircle, Check, MessageSquarePlus, PenTool, Ban, Palette, Droplet, Camera, Zap, Wrench, Layout, Video, Share2, ExternalLink, ShoppingBag } from 'lucide-react';
 import { fileToBase64, analyzeKitchenAndSuggestColors, generateCabinetPreview } from './services/geminiService';
 import { POPULAR_COLORS, HARDWARE_OPTIONS } from './constants';
 import { ColorOption, HardwareOption, ProcessingState } from './types';
@@ -12,7 +12,6 @@ import { DeploymentGuide } from './components/DeploymentGuide';
 import { ProcessInfographic } from './components/ProcessInfographic';
 import { PromotionalVideoGuide } from './components/PromotionalVideoGuide';
 
-// Fix: Augment global AIStudio interface for toolkit purposes
 declare global {
   interface AIStudio {
     hasSelectedApiKey: () => Promise<boolean>;
@@ -22,10 +21,9 @@ declare global {
 
 const SHEEN_OPTIONS = ['Default', 'Matte', 'Satin', 'Semi-Gloss', 'High-Gloss'];
 const GENERATION_LIMIT = 2;
-const APP_VERSION = 'v1.4.0';
+const APP_VERSION = 'v1.6.2';
 
-const BEFORE_IMG = "https://images.unsplash.com/photo-1594901597593-3796d194f48b?q=80&w=2070&auto=format&fit=crop"; 
-const AFTER_IMG = "https://images.unsplash.com/photo-1556912178-0810795c3702?q=80&w=2070&auto=format&fit=crop"; 
+const HERO_BG = "https://images.unsplash.com/photo-1556912178-0810795c3702?q=80&w=2070&auto=format&fit=crop";
 
 const App: React.FC = () => {
   const [maintenanceMode, setMaintenanceMode] = useState<boolean>(false);
@@ -53,8 +51,6 @@ const App: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [showEmailGate, setShowEmailGate] = useState<boolean>(false);
   
-  const [sliderPos, setSliderPos] = useState(50);
-  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -65,20 +61,6 @@ const App: React.FC = () => {
     if (storedCount) setGenerationCount(parseInt(storedCount, 10));
     if (storedEmail) setUserEmail(storedEmail);
   }, []);
-
-  if (maintenanceMode) {
-    return (
-      <>
-        <MaintenanceScreen />
-        <button 
-          onClick={() => setMaintenanceMode(false)}
-          className="fixed bottom-4 right-4 bg-white/10 hover:bg-white/20 text-white/50 hover:text-white px-3 py-1 rounded-full text-xs transition-all z-[100] backdrop-blur-sm"
-        >
-          Exit Maintenance Mode
-        </button>
-      </>
-    );
-  }
 
   const handleUnlock = (email: string) => {
     localStorage.setItem('cabcoat_user_email', email);
@@ -233,9 +215,19 @@ const App: React.FC = () => {
     return `https://www.samplize.com/pages/search/?query=${query}`;
   };
 
-  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSliderPos(parseInt(e.target.value));
-  };
+  if (maintenanceMode) {
+    return (
+      <>
+        <MaintenanceScreen />
+        <button 
+          onClick={() => setMaintenanceMode(false)}
+          className="fixed bottom-4 right-4 bg-white/10 hover:bg-white/20 text-white/50 hover:text-white px-3 py-1 rounded-full text-xs transition-all z-[100] backdrop-blur-sm"
+        >
+          Exit Maintenance Mode
+        </button>
+      </>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 selection:bg-indigo-100 selection:text-indigo-900">
@@ -247,10 +239,9 @@ const App: React.FC = () => {
       <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="bg-indigo-600 p-2 rounded-lg">
-              <PaintBucket className="w-5 h-5 text-white" />
-            </div>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">CabCoat AI</h1>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+              Cabcoat<span className="text-indigo-600">.com</span> AI
+            </h1>
           </div>
           <div className="flex items-center gap-3">
             <button 
@@ -297,87 +288,36 @@ const App: React.FC = () => {
 
       {!image ? (
         <main className="relative min-h-[calc(100vh-64px)] flex flex-col items-center justify-center overflow-hidden">
-          {/* SLIDER LAYER: Positioned at the back */}
-          <div className="absolute inset-0 z-0 bg-slate-900">
-            <div className="relative w-full h-full overflow-hidden">
-              {/* After image is base */}
-              <img src={AFTER_IMG} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
-              
-              {/* Before image is clipped on top */}
-              <div 
-                className="absolute inset-0 w-full h-full overflow-hidden" 
-                style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}
-              >
-                <img src={BEFORE_IMG} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
-              </div>
-              
-              {/* Handle Line */}
-              <div 
-                className="absolute top-0 bottom-0 w-1 bg-white z-20 shadow-[0_0_20px_rgba(0,0,0,0.6)]"
-                style={{ left: `${sliderPos}%` }}
-              >
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-2xl flex items-center justify-center border-4 border-white">
-                  <div className="flex gap-1">
-                    <div className="w-0.5 h-4 bg-slate-300 rounded-full" />
-                    <div className="w-0.5 h-4 bg-slate-300 rounded-full" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Individual Labels to ensure no overlap and clean visuals */}
-              <div className="absolute top-10 left-10 z-10 pointer-events-none">
-                <span className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full text-white text-[10px] font-black uppercase tracking-widest border border-white/20 whitespace-nowrap shadow-xl">
-                  Before: Original Finish
-                </span>
-              </div>
-              
-              <div className="absolute top-10 right-10 z-10 pointer-events-none">
-                <span className="bg-indigo-600 px-4 py-2 rounded-full text-white text-[10px] font-black uppercase tracking-widest shadow-xl ring-2 ring-indigo-500/50 whitespace-nowrap">
-                  After: CabCoat Pro Painted
-                </span>
-              </div>
-
-              {/* The actual slider input - Z-INDEX IS CRITICAL HERE */}
-              <input 
-                type="range" 
-                min="0" 
-                max="100" 
-                value={sliderPos} 
-                onChange={handleSliderChange}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-col-resize z-30"
-              />
-            </div>
-            
-            {/* Dark Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-slate-900/70 z-[5]" />
+          <div className="absolute inset-0 z-0">
+            <img src={HERO_BG} alt="Modern Kitchen" className="absolute inset-0 w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-sm" />
           </div>
 
-          {/* TEXT CONTENT LAYER */}
-          <div className="relative z-40 max-w-6xl mx-auto px-4 py-20 text-center animate-fade-in flex flex-col items-center pointer-events-none">
+          <div className="relative z-10 max-w-6xl mx-auto px-4 py-20 text-center animate-fade-in flex flex-col items-center">
             {error && (
-              <div className="mb-8 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3 animate-shake max-w-xl mx-auto pointer-events-auto">
+              <div className="mb-8 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3 animate-shake max-w-xl mx-auto">
                 <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
                 <p className="text-red-700 text-sm flex-1 break-words font-medium">{error}</p>
               </div>
             )}
 
-            <h2 className="text-6xl md:text-9xl font-black text-white mb-8 tracking-tighter leading-[0.85] drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)]">
-              Visualize Your <br/>Dream Kitchen
+            <h2 className="text-5xl md:text-8xl font-black text-white mb-6 tracking-tighter leading-[0.9] drop-shadow-2xl">
+              Preview Your Kitchen <br/><span className="text-indigo-400">Before You Paint.</span>
             </h2>
-            <p className="text-xl md:text-2xl text-slate-200 max-w-3xl mb-12 leading-relaxed font-light drop-shadow-lg">
-              Don't guess what your cabinets will look like. Upload a photo and see your home transformed in seconds with professional-grade AI.
+            <p className="text-xl md:text-2xl text-slate-300 max-w-3xl mb-12 leading-relaxed font-light drop-shadow-md">
+              The professional visualization tool for homeowners. Upload a photo and see your cabinets transformed in seconds.
             </p>
 
-            <div className="flex flex-row gap-4 md:gap-6 justify-center w-full max-w-2xl mx-auto mb-16 pointer-events-auto">
+            <div className="flex flex-col sm:flex-row gap-4 md:gap-6 justify-center w-full max-w-2xl mx-auto mb-16">
                 <div className="relative group flex-1">
                   <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
                   <button 
                     onClick={() => fileInputRef.current?.click()} 
                     disabled={status === 'analyzing'} 
-                    className="w-full h-24 bg-indigo-600 hover:bg-indigo-700 text-white px-4 md:px-8 rounded-2xl font-bold text-lg md:text-2xl shadow-2xl transition-all hover:scale-[1.03] active:scale-95 flex items-center justify-center gap-2 md:gap-3 disabled:opacity-50 whitespace-nowrap overflow-hidden"
+                    className="w-full h-20 bg-indigo-600 hover:bg-indigo-700 text-white px-8 rounded-2xl font-bold text-xl md:text-2xl shadow-2xl transition-all hover:scale-[1.03] active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
                   >
-                    {status === 'analyzing' ? <RefreshCw className="w-5 h-5 md:w-7 md:h-7 animate-spin shrink-0" /> : <Upload className="w-5 h-5 md:w-7 md:h-7 shrink-0" />}
-                    <span className="truncate">{status === 'analyzing' ? "Analyzing..." : "Upload Photo"}</span>
+                    {status === 'analyzing' ? <RefreshCw className="w-7 h-7 animate-spin" /> : <Upload className="w-7 h-7" />}
+                    <span>{status === 'analyzing' ? "Analyzing..." : "Upload Photo"}</span>
                   </button>
                 </div>
                 <div className="relative group flex-1">
@@ -385,20 +325,20 @@ const App: React.FC = () => {
                   <button 
                     onClick={() => cameraInputRef.current?.click()} 
                     disabled={status === 'analyzing'} 
-                    className="w-full h-24 bg-white hover:bg-slate-50 text-slate-900 px-4 md:px-8 rounded-2xl font-bold text-lg md:text-2xl shadow-2xl transition-all hover:scale-[1.03] active:scale-95 flex items-center justify-center gap-2 md:gap-3 disabled:opacity-50 whitespace-nowrap overflow-hidden"
+                    className="w-full h-20 bg-white hover:bg-slate-50 text-slate-900 px-8 rounded-2xl font-bold text-xl md:text-2xl shadow-2xl transition-all hover:scale-[1.03] active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
                   >
-                    <Camera className="w-5 h-5 md:w-7 md:h-7 text-indigo-600 shrink-0" />
-                    <span className="truncate">Take Photo</span>
+                    <Camera className="w-7 h-7 text-indigo-600" />
+                    <span>Take Photo</span>
                   </button>
                 </div>
             </div>
 
-            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-xl text-white px-6 py-3 rounded-full text-sm font-bold shadow-2xl border border-white/20 pointer-events-auto">
+            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-xl text-white px-6 py-3 rounded-full text-sm font-bold shadow-2xl border border-white/20">
               <Zap className="w-4 h-4 fill-amber-400 text-amber-400" />
-              Instant AI Preview: Professional Visualizations
+              Advanced AI: Professional Wood Finish Simulation
             </div>
             
-            <p className="mt-8 text-[10px] text-slate-400 font-black uppercase tracking-[0.4em] drop-shadow-md">A premium service by CabCoat.com</p>
+            <p className="mt-8 text-[10px] text-slate-400 font-black uppercase tracking-[0.4em] drop-shadow-md">DEVELOPED BY RICK LYNCH</p>
           </div>
         </main>
       ) : (
