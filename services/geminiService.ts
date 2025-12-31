@@ -16,15 +16,11 @@ export const fileToBase64 = (file: File): Promise<string> => {
 };
 
 /**
- * Helper to get a fresh AI instance.
- * Using a function ensures we get the most up-to-date API_KEY from the environment.
+ * Helper to get a fresh AI instance using the global process.env.API_KEY.
+ * Follows the strict SDK initialization guideline.
  */
 const getAIInstance = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey || apiKey.trim() === "") {
-    throw new Error("API Key missing. If you are on Vercel, please set the API_KEY environment variable. If you are in the design tool, please click 'Connect Design Engine'.");
-  }
-  return new GoogleGenAI({ apiKey });
+  return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
 export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promise<AnalysisResult> => {
@@ -42,7 +38,7 @@ export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promi
             },
           },
           {
-            text: "Analyze this image. 1. Determine if this is a photo of a kitchen with visible cabinets. 2. If it is a kitchen, analyze existing elements (flooring, countertops, backsplash) and suggest 4 specific paint colors for the cabinets. Identify real paint manufacturers (like Sherwin Williams or Benjamin Moore) and provide the color codes. Return the response in JSON format.",
+            text: "Analyze this kitchen image. 1. Confirm it's a kitchen. 2. Identify the cabinet style and room lighting. 3. Suggest 4 specific cabinet paint colors from major brands (Benjamin Moore, Sherwin Williams) that would complement the existing countertops, flooring, and backsplash. Return the response in strict JSON format.",
           },
         ],
       },
@@ -51,8 +47,8 @@ export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promi
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            isKitchen: { type: Type.BOOLEAN, description: "Whether the image clearly shows a kitchen with cabinets." },
-            reasoning: { type: Type.STRING, description: "Brief design advice." },
+            isKitchen: { type: Type.BOOLEAN, description: "Whether the image clearly shows a kitchen." },
+            reasoning: { type: Type.STRING, description: "Brief professional design advice." },
             suggestedColors: {
               type: Type.ARRAY,
               items: {
@@ -93,34 +89,28 @@ export const generateCabinetPreview = async (
   const ai = getAIInstance();
 
   try {
-    let prompt = `Edit this kitchen image with professional cabinet painting results.`;
+    let prompt = `REPAINT KITCHEN CABINETS:
+    - Apply a professional factory-sprayed finish to all visible cabinets and islands.
+    - Style: High-end photorealistic interior photography quality.
+    - Maintain existing countertops, backsplash, appliances, and floor.`;
     
     if (colorName) {
-      prompt += ` Paint the kitchen cabinets in "${colorName}"`;
-      if (colorHex) {
-        prompt += ` (reference hex code: ${colorHex})`;
-      }
-      prompt += `.`;
-    } else {
-      prompt += ` Keep existing color but refresh the finish.`;
+      prompt += `\n- NEW COLOR: "${colorName}"${colorHex ? ` (Reference Hex: ${colorHex})` : ''}. Ensure the color matches the provided name perfectly under the room's current lighting.`;
     }
     
-    prompt += ` 
-    TECHNICAL REQUIREMENTS:
-    - High-end factory-smooth sprayed finish.
-    - Sheen: ${sheen || 'Satin'}.
-    - Lighting must remain consistent with original photo.
-    - Perspective and shadows must be realistic.`;
+    if (sheen && sheen !== 'Default') {
+      prompt += `\n- FINISH: ${sheen} sheen.`;
+    }
 
     if (hardwareName && hardwareName !== 'Keep Existing') {
-      prompt += ` Replace hardware with ${hardwareName}.`;
+      prompt += `\n- HARDWARE: Replace current handles/knobs with ${hardwareName}.`;
     }
 
     if (customInstruction && customInstruction.trim()) {
-      prompt += ` User tweaks: "${customInstruction}".`;
+      prompt += `\n- USER REQUEST: "${customInstruction}"`;
     }
 
-    prompt += ` Constraint: Only change the cabinets. Do not alter floors, walls, or appliances. Photorealistic 4K quality.`;
+    prompt += `\n- LIGHTING: Keep original lighting and shadows for 100% realism. 4K RESOLUTION.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-image-preview',
@@ -151,7 +141,7 @@ export const generateCabinetPreview = async (
       }
     }
 
-    throw new Error("AI did not return an image. Please check your instructions.");
+    throw new Error("Design Engine did not return an image. This usually happens if the AI content filters were triggered or the API key is invalid.");
   } catch (error) {
     console.error("Error generating preview:", error);
     throw error;
