@@ -16,17 +16,20 @@ export const fileToBase64 = (file: File): Promise<string> => {
 };
 
 /**
- * Helper to get a fresh AI instance using the global process.env.API_KEY.
- * Follows the strict SDK initialization guideline.
+ * Ensures a fresh instance of the AI client is created with the current API_KEY.
+ * This is critical to avoid "API Key not set" errors after a user connects their key.
  */
-const getAIInstance = () => {
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+const getAIClient = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API_KEY_MISSING");
+  }
+  return new GoogleGenAI({ apiKey });
 };
 
 export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promise<AnalysisResult> => {
-  const ai = getAIInstance();
-  
   try {
+    const ai = getAIClient();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview", 
       contents: {
@@ -69,12 +72,13 @@ export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promi
     });
 
     const text = response.text;
-    if (!text) throw new Error("No response from AI");
+    if (!text) throw new Error("No response from AI engine.");
     
     return JSON.parse(text) as AnalysisResult;
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message === "API_KEY_MISSING") throw error;
     console.error("Error analyzing image:", error);
-    throw error;
+    throw new Error(error.message || "Failed to analyze kitchen image.");
   }
 };
 
@@ -86,9 +90,9 @@ export const generateCabinetPreview = async (
   customInstruction?: string,
   sheen?: string
 ): Promise<string> => {
-  const ai = getAIInstance();
-
   try {
+    const ai = getAIClient();
+
     let prompt = `REPAINT KITCHEN CABINETS:
     - Apply a professional factory-sprayed finish to all visible cabinets and islands.
     - Style: High-end photorealistic interior photography quality.
@@ -141,9 +145,10 @@ export const generateCabinetPreview = async (
       }
     }
 
-    throw new Error("Design Engine did not return an image. This usually happens if the AI content filters were triggered or the API key is invalid.");
-  } catch (error) {
+    throw new Error("The visualizer was unable to process this request. Try a different color or simpler instructions.");
+  } catch (error: any) {
+    if (error.message === "API_KEY_MISSING") throw error;
     console.error("Error generating preview:", error);
-    throw error;
+    throw new Error(error.message || "Visualization failed. Please check your connection.");
   }
 };
