@@ -15,16 +15,8 @@ export const fileToBase64 = (file: File): Promise<string> => {
   });
 };
 
-/**
- * Creates a fresh AI client using the current environment key.
- * This is the recommended approach to avoid stale keys after the user connects their engine.
- */
 const getAIClient = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("API_KEY_MISSING");
-  }
-  return new GoogleGenAI({ apiKey });
+  return new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
 };
 
 export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promise<AnalysisResult> => {
@@ -76,9 +68,6 @@ export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promi
     
     return JSON.parse(text) as AnalysisResult;
   } catch (error: any) {
-    if (error.message === "API_KEY_MISSING" || error.message.includes("API Key must be set")) {
-      throw new Error("API_KEY_MISSING");
-    }
     console.error("Error analyzing image:", error);
     throw new Error(error.message || "Failed to analyze kitchen image.");
   }
@@ -101,7 +90,7 @@ export const generateCabinetPreview = async (
     - Maintain existing countertops, backsplash, appliances, and floor.`;
     
     if (colorName) {
-      prompt += `\n- NEW COLOR: "${colorName}"${colorHex ? ` (Reference Hex: ${colorHex})` : ''}. Ensure the color matches the provided name perfectly under the room's current lighting.`;
+      prompt += `\n- NEW COLOR: "${colorName}"${colorHex ? ` (Reference Hex: ${colorHex})` : ''}.`;
     }
     
     if (sheen && sheen !== 'Default') {
@@ -116,10 +105,10 @@ export const generateCabinetPreview = async (
       prompt += `\n- USER REQUEST: "${customInstruction}"`;
     }
 
-    prompt += `\n- LIGHTING: Keep original lighting and shadows for 100% realism. 4K RESOLUTION.`;
+    prompt += `\n- Ensure 100% realism and photorealistic shadows.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-image-preview',
+      model: 'gemini-2.5-flash-image',
       contents: {
         parts: [
           {
@@ -135,8 +124,7 @@ export const generateCabinetPreview = async (
       },
       config: {
         imageConfig: {
-          aspectRatio: "1:1",
-          imageSize: "4K"
+          aspectRatio: "1:1"
         }
       }
     });
@@ -147,12 +135,9 @@ export const generateCabinetPreview = async (
       }
     }
 
-    throw new Error("The visualizer was unable to process this request. Try a different color or simpler instructions.");
+    throw new Error("The visualizer was unable to process this request.");
   } catch (error: any) {
-    if (error.message === "API_KEY_MISSING" || error.message.includes("API Key must be set")) {
-      throw new Error("API_KEY_MISSING");
-    }
     console.error("Error generating preview:", error);
-    throw new Error(error.message || "Visualization failed. Please check your connection.");
+    throw new Error(error.message || "Visualization failed. Please try again.");
   }
 };

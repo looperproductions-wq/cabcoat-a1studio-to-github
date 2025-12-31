@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, PaintBucket, Sparkles, RefreshCw, AlertCircle, Check, Key, MessageSquarePlus, PenTool, Ban, Palette, Droplet, Camera, Zap, ShieldCheck, ChevronRight } from 'lucide-react';
+import { Upload, PaintBucket, Sparkles, RefreshCw, AlertCircle, Check, MessageSquarePlus, PenTool, Ban, Palette, Droplet, Camera, Zap, ShieldCheck, ChevronRight } from 'lucide-react';
 import { fileToBase64, analyzeKitchenAndSuggestColors, generateCabinetPreview } from './services/geminiService';
 import { POPULAR_COLORS, HARDWARE_OPTIONS } from './constants';
 import { ColorOption, HardwareOption, ProcessingState } from './types';
@@ -9,7 +9,7 @@ import { ImageComparator } from './components/ImageComparator';
 import { EmailGateModal } from './components/EmailGateModal';
 import { MaintenanceScreen } from './components/MaintenanceScreen';
 
-const APP_VERSION = 'v1.9.8';
+const APP_VERSION = 'v2.0.0';
 const SHEEN_OPTIONS = ['Default', 'Matte', 'Satin', 'Semi-Gloss', 'High-Gloss'];
 const GENERATION_LIMIT = 2;
 const MAINTENANCE_MODE = false;
@@ -17,8 +17,6 @@ const MAINTENANCE_MODE = false;
 const App: React.FC = () => {
   if (MAINTENANCE_MODE) return <MaintenanceScreen />;
 
-  const [hasKey, setHasKey] = useState<boolean>(false);
-  const [checkingKey, setCheckingKey] = useState<boolean>(true);
   const [image, setImage] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [status, setStatus] = useState<ProcessingState>('idle');
@@ -39,25 +37,7 @@ const App: React.FC = () => {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  // Check key connection state on mount
   useEffect(() => {
-    const checkKey = async () => {
-      try {
-        const aistudio = (window as any).aistudio;
-        if (aistudio && aistudio.hasSelectedApiKey) {
-          const selected = await aistudio.hasSelectedApiKey();
-          setHasKey(selected || (!!process.env.API_KEY && process.env.API_KEY.length > 5));
-        } else {
-          setHasKey(!!process.env.API_KEY && process.env.API_KEY.length > 5);
-        }
-      } catch (e) {
-        setHasKey(false);
-      } finally {
-        setCheckingKey(false);
-      }
-    };
-    checkKey();
-    
     const storedCount = localStorage.getItem('cabcoat_gen_count');
     const storedEmail = localStorage.getItem('cabcoat_user_email');
     if (storedCount) setGenerationCount(parseInt(storedCount, 10));
@@ -70,35 +50,6 @@ const App: React.FC = () => {
     setShowEmailGate(false); 
   };
 
-  /**
-   * Ensures the AI Engine is connected before proceeding with any action.
-   */
-  const ensureConnected = async () => {
-    const aistudio = (window as any).aistudio;
-    if (aistudio && aistudio.hasSelectedApiKey) {
-      const selected = await aistudio.hasSelectedApiKey();
-      const internalKey = !!process.env.API_KEY && process.env.API_KEY.length > 5;
-      
-      if (!selected && !internalKey) {
-        await aistudio.openSelectKey();
-        // After triggering the dialog, we assume user is connecting. 
-        // We'll update state to reflect the attempt.
-        setHasKey(true); 
-        return true; 
-      }
-    }
-    return true;
-  };
-
-  const handleConnectKey = async () => {
-    const aistudio = (window as any).aistudio;
-    if (aistudio && aistudio.openSelectKey) {
-      await aistudio.openSelectKey();
-      setError(null);
-      setHasKey(true);
-    }
-  };
-
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -106,8 +57,6 @@ const App: React.FC = () => {
       setError('Please upload a valid image file (JPEG or PNG).'); 
       return; 
     }
-
-    await ensureConnected();
 
     try {
       setStatus('analyzing'); 
@@ -127,12 +76,7 @@ const App: React.FC = () => {
       setStatus('idle');
     } catch (err: any) { 
       console.error(err);
-      if (err.message === "API_KEY_MISSING" || err.message.includes("API Key must be set")) {
-        setError("AI Engine Access Required: Please use the 'Connect' button in the header to activate your 4K visualizer.");
-        handleConnectKey();
-      } else {
-        setError(`Analysis Failed: ${err.message}`); 
-      }
+      setError(`Analysis Failed: ${err.message}`); 
       setStatus('idle'); 
     }
   };
@@ -140,8 +84,6 @@ const App: React.FC = () => {
   const handleGenerate = async (newColor?: ColorOption | null, newHardware?: HardwareOption, specificMessage?: string) => {
     if (!image) return;
     
-    await ensureConnected();
-
     if (!userEmail && generationCount >= GENERATION_LIMIT) { 
       setShowEmailGate(true); 
       return; 
@@ -201,12 +143,7 @@ const App: React.FC = () => {
       }
     } catch (err: any) { 
       console.error(err); 
-      if (err.message === "API_KEY_MISSING" || err.message.includes("API Key must be set")) {
-         setError("Connection Required: Vercel requires manual key activation. Please click 'Connect Engine' to continue.");
-         handleConnectKey();
-      } else {
-         setError(`Design Engine Error: ${err.message}`); 
-      }
+      setError(`Design Engine Error: ${err.message}`); 
       setStatus('idle'); 
     }
   };
@@ -227,8 +164,6 @@ const App: React.FC = () => {
     if (cameraInputRef.current) cameraInputRef.current.value = ''; 
   };
 
-  if (checkingKey) return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500 font-bold uppercase tracking-widest text-xs">Initializing Design Engine...</div>;
-
   return (
     <div className="min-h-screen bg-slate-50 selection:bg-indigo-100 selection:text-indigo-900">
       {showEmailGate && <EmailGateModal onUnlock={handleUnlock} />}
@@ -245,13 +180,6 @@ const App: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button 
-              onClick={handleConnectKey} 
-              className={`group flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all shadow-sm border ${hasKey ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-600 hover:text-white'}`}
-            >
-              {hasKey ? <Check className="w-3.5 h-3.5" /> : <Key className="w-3.5 h-3.5 group-hover:rotate-12 transition-transform" />}
-              <span>{hasKey ? 'Engine Connected' : 'Connect Engine'}</span>
-            </button>
             {image && (
               <button onClick={resetApp} className="text-sm font-bold text-slate-400 hover:text-slate-800 flex items-center gap-1 transition-colors px-3 py-1.5 hover:bg-slate-100 rounded-lg">
                 <RefreshCw className="w-4 h-4" /> Reset
@@ -268,14 +196,8 @@ const App: React.FC = () => {
                <AlertCircle className="w-6 h-6 text-red-600 shrink-0" />
             </div>
             <div className="flex-1">
-              <h4 className="text-red-900 font-black uppercase tracking-tight text-sm mb-1">Engine Notice</h4>
-              <p className="text-red-700 text-sm leading-relaxed font-medium mb-4">{error}</p>
-              <button 
-                onClick={handleConnectKey} 
-                className="bg-red-600 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-red-700 transition-all shadow-md active:scale-95"
-              >
-                <Key className="w-4 h-4" /> Resolve Connection
-              </button>
+              <h4 className="text-red-900 font-black uppercase tracking-tight text-sm mb-1">System Message</h4>
+              <p className="text-red-700 text-sm leading-relaxed font-medium">{error}</p>
             </div>
           </div>
         )}
@@ -284,7 +206,7 @@ const App: React.FC = () => {
           <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in-95 duration-700">
             <h2 className="text-6xl font-black text-slate-900 mb-6 tracking-tighter max-w-3xl">Visualize Your Dream Kitchen</h2>
             <p className="text-xl text-slate-500 max-w-2xl mb-10 leading-relaxed font-medium">
-              Experience the transformation instantly. Upload a photo and see your cabinets repainted with professional 4K precision.
+              Experience the transformation instantly. Upload a photo and see your cabinets repainted with professional precision.
             </p>
             <div className="flex items-center gap-3 bg-white shadow-xl shadow-indigo-50 border border-indigo-50 text-indigo-700 px-8 py-4 rounded-full text-sm font-black uppercase tracking-widest mb-16">
               <Zap className="w-5 h-5 fill-indigo-500 animate-pulse" /> 
@@ -306,7 +228,7 @@ const App: React.FC = () => {
                 </button>
               </div>
             </div>
-            <p className="mt-12 text-[10px] text-slate-400 uppercase tracking-[0.4em] font-black">Professional Cabinet Painting AI Engine</p>
+            <p className="mt-12 text-[10px] text-slate-400 uppercase tracking-[0.4em] font-black">Professional Cabinet Painting Engine</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 animate-in fade-in duration-700">
@@ -369,7 +291,7 @@ const App: React.FC = () => {
                     </select>
                   </div>
                   <button onClick={() => handleGenerate(undefined, undefined, "Applying custom finish...")} disabled={status !== 'idle' && status !== 'complete'} className="w-full bg-slate-900 hover:bg-black text-white text-sm font-black uppercase tracking-widest py-5 rounded-2xl transition-all flex items-center justify-center gap-3 shadow-2xl active:scale-95 disabled:opacity-50">
-                    <PaintBucket className="w-5 h-5" /> Render 4K Preview
+                    <PaintBucket className="w-5 h-5" /> Render Preview
                   </button>
                 </div>
               </div>
@@ -423,7 +345,7 @@ const App: React.FC = () => {
                </div>
                <h2 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">CabCoat AI</h2>
              </div>
-             <p className="text-sm text-slate-400 font-bold uppercase tracking-[0.2em] mb-4">Photorealistic 4K Engine</p>
+             <p className="text-sm text-slate-400 font-bold uppercase tracking-[0.2em] mb-4">Photorealistic Visualization</p>
              <p className="text-sm text-slate-500 font-medium leading-relaxed">
                Advanced visualization for cabinet painting and interior transformations.
              </p>
