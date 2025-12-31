@@ -21,7 +21,8 @@ export const fileToBase64 = (file: File): Promise<string> => {
  */
 const getAIClient = () => {
   const apiKey = process.env.API_KEY;
-  if (!apiKey) {
+  // If key is missing or clearly too short to be valid, trigger the connection flow
+  if (!apiKey || apiKey.length < 5) {
     throw new Error("API_KEY_MISSING");
   }
   return new GoogleGenAI({ apiKey });
@@ -76,7 +77,10 @@ export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promi
     
     return JSON.parse(text) as AnalysisResult;
   } catch (error: any) {
-    if (error.message === "API_KEY_MISSING") throw error;
+    // Re-throw specific missing key error so UI can handle it
+    if (error.message === "API_KEY_MISSING" || error.message.includes("API Key must be set")) {
+      throw new Error("API_KEY_MISSING");
+    }
     console.error("Error analyzing image:", error);
     throw new Error(error.message || "Failed to analyze kitchen image.");
   }
@@ -147,7 +151,9 @@ export const generateCabinetPreview = async (
 
     throw new Error("The visualizer was unable to process this request. Try a different color or simpler instructions.");
   } catch (error: any) {
-    if (error.message === "API_KEY_MISSING") throw error;
+    if (error.message === "API_KEY_MISSING" || error.message.includes("API Key must be set")) {
+      throw new Error("API_KEY_MISSING");
+    }
     console.error("Error generating preview:", error);
     throw new Error(error.message || "Visualization failed. Please check your connection.");
   }

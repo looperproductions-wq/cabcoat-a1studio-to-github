@@ -9,7 +9,7 @@ import { ImageComparator } from './components/ImageComparator';
 import { EmailGateModal } from './components/EmailGateModal';
 import { MaintenanceScreen } from './components/MaintenanceScreen';
 
-const APP_VERSION = 'v1.9.5';
+const APP_VERSION = 'v1.9.6';
 const SHEEN_OPTIONS = ['Default', 'Matte', 'Satin', 'Semi-Gloss', 'High-Gloss'];
 const GENERATION_LIMIT = 2;
 const MAINTENANCE_MODE = false;
@@ -41,7 +41,8 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const envKey = process.env.API_KEY;
-    setHasKey(!!envKey);
+    // Check if key exists and is not just an empty string
+    setHasKey(!!envKey && envKey.length > 5);
     setCheckingKey(false);
     const storedCount = localStorage.getItem('cabcoat_gen_count');
     const storedEmail = localStorage.getItem('cabcoat_user_email');
@@ -59,7 +60,7 @@ const App: React.FC = () => {
     const aistudio = (window as any).aistudio;
     if (aistudio && typeof aistudio.hasSelectedApiKey === 'function') {
       const selected = await aistudio.hasSelectedApiKey();
-      if (!selected && !process.env.API_KEY) {
+      if (!selected && (!process.env.API_KEY || process.env.API_KEY.length < 5)) {
         await aistudio.openSelectKey();
         return false;
       }
@@ -104,8 +105,8 @@ const App: React.FC = () => {
       setStatus('idle');
     } catch (err: any) { 
       console.error(err);
-      if (err.message === "API_KEY_MISSING") {
-        setError("AI Engine Disconnected. Please click 'Connect AI Engine' to continue.");
+      if (err.message === "API_KEY_MISSING" || err.message.includes("API Key must be set")) {
+        setError("AI Connection Required: Vercel requires manual key connection. Please click the 'Connect AI Engine' button above to fix the 'API Key not set' error.");
         handleConnectKey();
       } else {
         setError(`Analysis Failed: ${err.message}`); 
@@ -120,7 +121,7 @@ const App: React.FC = () => {
     
     const keyReady = await checkAndConnectKey();
     if (!keyReady) {
-      setError("Please connect your AI Engine to enable 4K visualization.");
+      setError("AI Engine Access Required. Please connect your engine to enable high-definition previews.");
       return;
     }
 
@@ -154,7 +155,7 @@ const App: React.FC = () => {
     }
 
     if (!effectiveColorName && hardwareToUse.id === 'none' && !customInstruction.trim() && selectedSheen === 'Default' && newColor !== null) { 
-      setError("Please select a paint color or style to visualize."); 
+      setError("Please select a color or style to visualize."); 
       return; 
     }
 
@@ -183,8 +184,8 @@ const App: React.FC = () => {
       }
     } catch (err: any) { 
       console.error(err); 
-      if (err.message === "API_KEY_MISSING") {
-         setError("Connection lost. Please reconnect the AI engine to generate 4K previews.");
+      if (err.message === "API_KEY_MISSING" || err.message.includes("API Key must be set")) {
+         setError("Connection Required: To solve the Vercel API error, please click 'Connect Engine' in the top right and select a valid key.");
          handleConnectKey();
       } else {
          setError(`Design Engine Error: ${err.message}`); 
@@ -211,14 +212,14 @@ const App: React.FC = () => {
 
   if (checkingKey) return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500 font-bold uppercase tracking-widest text-xs">Initializing Design Engine...</div>;
   
-  if (!hasKey) return (
+  if (!hasKey && !image) return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="bg-white max-w-md w-full rounded-3xl shadow-2xl p-10 text-center border border-slate-100">
         <div className="bg-indigo-600 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-xl shadow-indigo-100 rotate-3">
           <Key className="w-10 h-10 text-white" />
         </div>
-        <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tighter">Engine Offline</h2>
-        <p className="text-slate-500 mb-8 font-medium leading-relaxed">Connect your professional AI engine to enable 4K kitchen visualization.</p>
+        <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tighter">Engine Setup</h2>
+        <p className="text-slate-500 mb-8 font-medium leading-relaxed">Vercel requires a manual connection to the AI engine for security. Click below to continue.</p>
         <button onClick={handleConnectKey} className="w-full bg-indigo-600 text-white font-black uppercase tracking-widest py-5 rounded-2xl shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95">
           Connect AI Engine
         </button>
@@ -265,13 +266,13 @@ const App: React.FC = () => {
                <AlertCircle className="w-6 h-6 text-red-600 shrink-0" />
             </div>
             <div className="flex-1">
-              <h4 className="text-red-900 font-black uppercase tracking-tight text-sm mb-1">Visualization Error</h4>
+              <h4 className="text-red-900 font-black uppercase tracking-tight text-sm mb-1">Engine Error</h4>
               <p className="text-red-700 text-sm leading-relaxed font-medium mb-4">{error}</p>
               <button 
                 onClick={handleConnectKey} 
                 className="bg-red-600 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-red-700 transition-all shadow-md active:scale-95"
               >
-                <Key className="w-4 h-4" /> Reconnect Engine
+                <Key className="w-4 h-4" /> Fix Connection Now
               </button>
             </div>
           </div>
@@ -279,19 +280,14 @@ const App: React.FC = () => {
 
         {!image ? (
           <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in-95 duration-700">
-            <div className="bg-indigo-50 w-28 h-28 rounded-3xl flex items-center justify-center mb-10 shadow-inner relative">
-              <Upload className="w-12 h-12 text-indigo-600" />
-              <div className="absolute -top-2 -right-2 bg-white p-2 rounded-full shadow-lg border border-indigo-50">
-                 <Sparkles className="w-5 h-5 text-amber-400" />
-              </div>
-            </div>
+            {/* Upload Icon Removed per user request */}
             <h2 className="text-6xl font-black text-slate-900 mb-6 tracking-tighter max-w-3xl">Visualize Your Dream Kitchen</h2>
             <p className="text-xl text-slate-500 max-w-2xl mb-10 leading-relaxed font-medium">
-              See the transformation instantly. Upload a photo and let our professional 4K design engine repaint your cabinets with photorealistic precision.
+              Experience the transformation instantly. Upload a photo and see your cabinets repainted with professional 4K precision.
             </p>
             <div className="flex items-center gap-3 bg-white shadow-xl shadow-indigo-50 border border-indigo-50 text-indigo-700 px-8 py-4 rounded-full text-sm font-black uppercase tracking-widest mb-16">
               <Zap className="w-5 h-5 fill-indigo-500 animate-pulse" /> 
-              <span>2 HD Previews Included</span>
+              <span>2 High-Def Renders Included</span>
               <ChevronRight className="w-4 h-4 opacity-30" />
             </div>
             
@@ -309,7 +305,7 @@ const App: React.FC = () => {
                 </button>
               </div>
             </div>
-            <p className="mt-12 text-[10px] text-slate-400 uppercase tracking-[0.4em] font-black">Powered by Gemini 4K Design Engine</p>
+            <p className="mt-12 text-[10px] text-slate-400 uppercase tracking-[0.4em] font-black">Professional Cabinet Painting AI Engine</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 animate-in fade-in duration-700">
@@ -428,16 +424,16 @@ const App: React.FC = () => {
              </div>
              <p className="text-sm text-slate-400 font-bold uppercase tracking-[0.2em] mb-4">Photorealistic 4K Engine</p>
              <p className="text-sm text-slate-500 font-medium leading-relaxed">
-               Cutting-edge interior design visualization powered by high-definition spatial AI.
+               Advanced visualization for cabinet painting and interior transformations.
              </p>
           </div>
           <div className="flex flex-col items-center md:items-end gap-5">
             <div className="flex items-center gap-3 text-indigo-600 bg-indigo-50 px-8 py-4 rounded-full text-xs font-black uppercase tracking-widest border border-indigo-100 shadow-sm">
-               <ShieldCheck className="w-5 h-5" /> Enterprise Grade Visualizer
+               <ShieldCheck className="w-5 h-5" /> Enterprise Visualizer
             </div>
             <div className="mt-4 text-[10px] text-slate-400 uppercase font-black tracking-[0.4em] space-y-2 opacity-60">
                 <p>{APP_VERSION} © CabCoat AI - All Rights Reserved</p>
-                <p>Designed for Ultimate Precision</p>
+                <p>Repaint with Confidence</p>
             </div>
           </div>
         </div>
