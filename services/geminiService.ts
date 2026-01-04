@@ -16,9 +16,13 @@ export const fileToBase64 = (file: File): Promise<string> => {
 };
 
 export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promise<AnalysisResult> => {
-  // Initialize with the environment variable directly. 
-  // Assume process.env.API_KEY is pre-configured and valid.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // Always create a new instance right before use as per guidelines
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API Key is missing. Please ensure 'API_KEY' is configured in your environment variables.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
   
   try {
     const response = await ai.models.generateContent({
@@ -26,7 +30,7 @@ export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promi
       contents: {
         parts: [
           { inlineData: { mimeType: "image/jpeg", data: base64Image } },
-          { text: "Analyze this kitchen. 1. Identify if it is a kitchen. 2. Suggest 4 cabinet paint colors (Benjamin Moore/Sherwin Williams) that match the counters/floors. Return JSON." },
+          { text: "Identify if this is a kitchen. Suggest 4 cabinet paint colors (brand, name, hex) that complement the counters and flooring. Return JSON." },
         ],
       },
       config: {
@@ -56,11 +60,11 @@ export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promi
     });
     
     const text = response.text;
-    if (!text) throw new Error("AI returned an empty response.");
+    if (!text) throw new Error("Empty response from AI service.");
     return JSON.parse(text) as AnalysisResult;
   } catch (error: any) {
     console.error("Analysis Error:", error);
-    throw new Error(error.message || "Failed to analyze kitchen image.");
+    throw new Error(error.message || "Visualization engine connection failed.");
   }
 };
 
@@ -72,31 +76,36 @@ export const generateCabinetPreview = async (
   customInstruction?: string,
   sheen?: string
 ): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API Key is missing. Check your hosting provider settings.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
 
   try {
     let prompt = `REPAINT KITCHEN CABINETS:
-    - Apply professional factory-sprayed paint to all visible cabinets and islands.
+    - Target: All visible cabinets and islands.
     - Style: Photorealistic 4K architectural interior photography.
-    - Preservation: Do not change countertops, backsplash, appliances, or flooring.`;
+    - Restriction: Do NOT change countertops, backsplash, floor, or walls.`;
     
     if (colorName) {
-      prompt += `\n- NEW CABINET COLOR: "${colorName}"${colorHex ? ` (Representative Hex: ${colorHex})` : ''}.`;
+      prompt += `\n- NEW COLOR: "${colorName}"${colorHex ? ` (Hex Ref: ${colorHex})` : ''}.`;
     }
     
     if (sheen && sheen !== 'Default') {
-      prompt += `\n- PAINT FINISH: ${sheen} sheen.`;
+      prompt += `\n- FINISH: ${sheen} sheen.`;
     }
 
     if (hardwareName && hardwareName !== 'Keep Existing') {
-      prompt += `\n- HARDWARE: Replace current handles/knobs with ${hardwareName}.`;
+      prompt += `\n- HARDWARE: Replace current handles with ${hardwareName}.`;
     }
 
-    if (customInstruction && customInstruction.trim()) {
-      prompt += `\n- ADDITIONAL INSTRUCTIONS: "${customInstruction}"`;
+    if (customInstruction?.trim()) {
+      prompt += `\n- ADDITIONAL: ${customInstruction}`;
     }
 
-    prompt += `\n- Output only the modified image with realistic lighting and shadows.`;
+    prompt += `\n- Return the edited image with realistic shadows and lighting.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
@@ -114,9 +123,9 @@ export const generateCabinetPreview = async (
     for (const part of response.candidates?.[0]?.content?.parts || []) {
       if (part.inlineData) return part.inlineData.data;
     }
-    throw new Error("The image generation model did not return visual data.");
+    throw new Error("The AI model failed to generate a visual response.");
   } catch (error: any) {
     console.error("Generation Error:", error);
-    throw new Error(error.message || "Visualization failed. Check API configuration.");
+    throw new Error(error.message || "Failed to generate design preview.");
   }
 };
