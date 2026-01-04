@@ -16,23 +16,21 @@ export const fileToBase64 = (file: File): Promise<string> => {
 };
 
 export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promise<AnalysisResult> => {
+  // Use process.env.API_KEY exclusively as per guidelines
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API_KEY is not defined in the environment. Please ensure it is set in Vercel.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+  
   try {
-    // Create instance right before call to ensure up-to-date key
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview", 
+      model: "gemini-3-flash-preview",
       contents: {
         parts: [
-          {
-            inlineData: {
-              mimeType: "image/jpeg",
-              data: base64Image,
-            },
-          },
-          {
-            text: "Analyze this kitchen image. 1. Confirm it's a kitchen. 2. Identify the cabinet style and room lighting. 3. Suggest 4 specific cabinet paint colors from major brands (Benjamin Moore, Sherwin Williams) that would complement the existing countertops, flooring, and backsplash. Return the response in strict JSON format.",
-          },
+          { inlineData: { mimeType: "image/jpeg", data: base64Image } },
+          { text: "Analyze this kitchen's existing elements (flooring, countertops, backsplash, lighting). Suggest 4 specific cabinet paint colors from major brands (Benjamin Moore, Sherwin Williams) that would complement the room perfectly. Identify if it's actually a kitchen. Return the response in JSON format." },
         ],
       },
       config: {
@@ -40,8 +38,8 @@ export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promi
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            isKitchen: { type: Type.BOOLEAN, description: "Whether the image clearly shows a kitchen." },
-            reasoning: { type: Type.STRING, description: "Brief professional design advice." },
+            isKitchen: { type: Type.BOOLEAN },
+            reasoning: { type: Type.STRING, description: "Brief design advice on why these colors work." },
             suggestedColors: {
               type: Type.ARRAY,
               items: {
@@ -50,8 +48,8 @@ export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promi
                   name: { type: Type.STRING },
                   manufacturer: { type: Type.STRING },
                   code: { type: Type.STRING },
-                  hex: { type: Type.STRING },
-                  description: { type: Type.STRING }
+                  hex: { type: Type.STRING, description: "A representative hex code for the paint color" },
+                  description: { type: Type.STRING, description: "Why this fits the room" }
                 }
               }
             }
@@ -60,14 +58,13 @@ export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promi
         }
       }
     });
-
+    
     const text = response.text;
     if (!text) throw new Error("No response from AI engine.");
-    
     return JSON.parse(text) as AnalysisResult;
   } catch (error: any) {
     console.error("Error analyzing image:", error);
-    throw new Error(error.message || "Failed to analyze kitchen image. Please check your API key.");
+    throw new Error(error.message || "Analysis failed.");
   }
 };
 
@@ -79,12 +76,15 @@ export const generateCabinetPreview = async (
   customInstruction?: string,
   sheen?: string
 ): Promise<string> => {
-  try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API_KEY is not defined in the environment.");
+  }
 
+  const ai = new GoogleGenAI({ apiKey });
+  try {
     let prompt = `REPAINT KITCHEN CABINETS:
     - Apply a professional factory-sprayed finish to all visible cabinets and islands.
-    - Style: High-end photorealistic interior photography quality.
     - Maintain existing countertops, backsplash, appliances, and floor.`;
     
     if (colorName) {
@@ -96,14 +96,14 @@ export const generateCabinetPreview = async (
     }
 
     if (hardwareName && hardwareName !== 'Keep Existing') {
-      prompt += `\n- HARDWARE: Replace current handles/knobs with ${hardwareName}.`;
+      prompt += `\n- HARDWARE: Replace handles with ${hardwareName}.`;
     }
 
     if (customInstruction && customInstruction.trim()) {
       prompt += `\n- USER REQUEST: "${customInstruction}"`;
     }
 
-    prompt += `\n- Ensure 100% realism and photorealistic shadows.`;
+    prompt += `\n- Ensure photorealistic lighting and shadows. Return the modified image.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
@@ -132,10 +132,9 @@ export const generateCabinetPreview = async (
         return part.inlineData.data;
       }
     }
-
-    throw new Error("The visualizer was unable to process this request.");
+    throw new Error("No image generated in response");
   } catch (error: any) {
     console.error("Error generating preview:", error);
-    throw new Error(error.message || "Visualization failed. Please check your API key.");
+    throw new Error(error.message || "Generation failed.");
   }
 };
