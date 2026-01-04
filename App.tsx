@@ -1,21 +1,17 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, PaintBucket, Sparkles, RefreshCw, AlertCircle, Check, MessageSquarePlus, PenTool, Ban, Palette, Droplet, Camera, Zap, ChevronRight } from 'lucide-react';
+import { Upload, PaintBucket, Sparkles, RefreshCw, AlertCircle, Palette, Droplet, Camera, Zap, ChevronRight } from 'lucide-react';
 import { fileToBase64, analyzeKitchenAndSuggestColors, generateCabinetPreview } from './services/geminiService';
-import { POPULAR_COLORS, HARDWARE_OPTIONS } from './constants';
+import { HARDWARE_OPTIONS } from './constants';
 import { ColorOption, HardwareOption, ProcessingState } from './types';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { ImageComparator } from './components/ImageComparator';
 import { EmailGateModal } from './components/EmailGateModal';
-import { MaintenanceScreen } from './components/MaintenanceScreen';
 
 const SHEEN_OPTIONS = ['Default', 'Matte', 'Satin', 'Semi-Gloss', 'High-Gloss'];
 const GENERATION_LIMIT = 2;
-const MAINTENANCE_MODE = false;
 
 const App: React.FC = () => {
-  if (MAINTENANCE_MODE) return <MaintenanceScreen />;
-
   const [image, setImage] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [status, setStatus] = useState<ProcessingState>('idle');
@@ -53,44 +49,36 @@ const App: React.FC = () => {
     const file = event.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) { 
-      setError('Please upload a valid image file (JPEG or PNG).'); 
+      setError('Please upload a valid image (JPEG/PNG).'); 
       return; 
     }
+
     try {
       setStatus('analyzing'); 
-      setLoadingMessage("Analyzing Kitchen..."); 
+      setLoadingMessage("Analyzing Layout..."); 
       setError(null); 
       setGeneratedImage(null);
-      setSelectedColor(null); 
-      setCustomColor(''); 
-      setSelectedHardware(HARDWARE_OPTIONS[0]); 
-      setSelectedSheen('Default'); 
-      setCustomInstruction('');
       const base64 = await fileToBase64(file);
       setImage(base64);
-      const analysis = await analyzeKitchenAndSuggestColors(base64);
       
+      const analysis = await analyzeKitchenAndSuggestColors(base64);
       if (!analysis.isKitchen) {
-         setError("The system couldn't confirm this is a kitchen photo. Please try a different angle.");
-         setImage(null);
-         setStatus('idle');
-         return;
+        setError("AI could not confirm this is a kitchen photo. Please try another shot.");
+        setImage(null);
+        setStatus('idle');
+        return;
       }
-
       setAiSuggestions(analysis.suggestedColors.map(c => ({ ...c, isAI: true })));
       setAnalysisReasoning(analysis.reasoning);
       setStatus('idle');
     } catch (err: any) { 
-      console.error(err); 
-      setError(`System Message: ${err.message}`); 
+      setError(err.message); 
       setStatus('idle'); 
     }
   };
 
-  const handleGenerate = async (newColor?: ColorOption | null, newHardware?: HardwareOption, specificMessage?: string) => {
+  const handleGenerate = async (newColor?: ColorOption | null, newHardware?: HardwareOption) => {
     if (!image) return;
-    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-    
     if (!userEmail && generationCount >= GENERATION_LIMIT) { 
       setShowEmailGate(true); 
       return; 
@@ -105,36 +93,15 @@ const App: React.FC = () => {
       effectiveColorHex = newColor.hex; 
       setSelectedColor(newColor); 
       setCustomColor(''); 
-    }
-    else if (newColor === null) { 
-      effectiveColorName = null; 
-      effectiveColorHex = null; 
-      setSelectedColor(null); 
-      setCustomColor(''); 
-    }
-    else { 
-      if (customColor.trim()) effectiveColorName = customColor; 
-      else if (selectedColor) { 
-        effectiveColorName = selectedColor.name; 
-        effectiveColorHex = selectedColor.hex; 
-      } 
+    } else if (newColor === null) {
+      setSelectedColor(null);
+      setCustomColor('');
+    } else { 
+      effectiveColorName = customColor || selectedColor?.name || null;
+      effectiveColorHex = selectedColor?.hex || null;
     }
 
-    if (!effectiveColorName && hardwareToUse.id === 'none' && !customInstruction.trim() && selectedSheen === 'Default' && newColor !== null) { 
-      setError("Please select a color or style option."); 
-      return; 
-    }
-
-    if (newHardware) setSelectedHardware(newHardware);
-    let msg = specificMessage || "Processing...";
-    if (!specificMessage) { 
-      if (newColor) msg = `Applying ${newColor.name}...`; 
-      else if (newHardware) msg = `Installing ${newHardware.name}...`; 
-      else if (customColor) msg = `Applying ${customColor}...`; 
-      else msg = "Updating design..."; 
-    }
-    setLoadingMessage(msg);
-
+    setLoadingMessage("Generating Preview...");
     if (resultsRef.current) resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     
     try {
@@ -149,8 +116,7 @@ const App: React.FC = () => {
         localStorage.setItem('cabcoat_gen_count', newCount.toString()); 
       }
     } catch (err: any) { 
-      console.error(err); 
-      setError(`System Message: ${err.message}`); 
+      setError(err.message); 
       setStatus('idle'); 
     }
   };
@@ -159,16 +125,8 @@ const App: React.FC = () => {
     setImage(null); 
     setGeneratedImage(null); 
     setStatus('idle'); 
-    setSelectedColor(null); 
-    setCustomColor(''); 
-    setSelectedHardware(HARDWARE_OPTIONS[0]); 
-    setSelectedSheen('Default'); 
-    setAiSuggestions([]); 
-    setAnalysisReasoning(''); 
-    setCustomInstruction(''); 
-    setError(null); 
+    setError(null);
     if (fileInputRef.current) fileInputRef.current.value = ''; 
-    if (cameraInputRef.current) cameraInputRef.current.value = ''; 
   };
 
   return (
@@ -183,81 +141,77 @@ const App: React.FC = () => {
             </div>
             <div>
               <h1 className="text-xl font-black text-slate-900 tracking-tighter leading-none">CabCoat AI</h1>
-              <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mt-1">Professional Visualization</p>
+              <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mt-1">Cabinet Painting Visualizer</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            {image && (
-              <button onClick={resetApp} className="text-sm font-bold text-slate-400 hover:text-slate-800 flex items-center gap-1 transition-colors px-3 py-1.5 hover:bg-slate-100 rounded-lg">
-                <RefreshCw className="w-4 h-4" /> Start Over
-              </button>
-            )}
-          </div>
+          {image && (
+            <button onClick={resetApp} className="text-sm font-bold text-slate-400 hover:text-slate-800 flex items-center gap-1 px-3 py-1.5 hover:bg-slate-100 rounded-lg transition-colors">
+              <RefreshCw className="w-4 h-4" /> Start Over
+            </button>
+          )}
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8">
         {error && (
-          <div className="mb-8 bg-red-50 border border-red-200 rounded-2xl p-6 flex items-start gap-5 animate-in fade-in slide-in-from-top-4 duration-500">
-            <div className="bg-red-100 p-2 rounded-xl shrink-0">
-               <AlertCircle className="w-6 h-6 text-red-600" />
-            </div>
+          <div className="mb-8 bg-red-50 border border-red-200 rounded-2xl p-6 flex items-start gap-4 animate-in fade-in slide-in-from-top-4">
+            <AlertCircle className="w-6 h-6 text-red-600 shrink-0" />
             <div className="flex-1">
-              <h4 className="text-red-900 font-black uppercase tracking-tight text-sm mb-1">System Message</h4>
-              <p className="text-red-700 text-sm leading-relaxed font-medium">{error}</p>
+              <h4 className="text-red-900 font-black uppercase tracking-tight text-sm mb-1">System Error</h4>
+              <p className="text-red-700 text-sm font-medium">{error}</p>
             </div>
           </div>
         )}
 
         {!image ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in-95 duration-700">
+          <div className="flex flex-col items-center justify-center py-20 text-center">
             <h2 className="text-6xl font-black text-slate-900 mb-6 tracking-tighter max-w-3xl">Visualize Your Dream Kitchen</h2>
             <p className="text-xl text-slate-500 max-w-2xl mb-10 leading-relaxed font-medium">
-              Experience the transformation instantly. Upload a photo and see your cabinets repainted with professional precision.
+              Don't guess your next cabinet color. See it instantly with professional AI precision.
             </p>
-            <div className="flex items-center gap-3 bg-white shadow-xl shadow-indigo-50 border border-indigo-50 text-indigo-700 px-8 py-4 rounded-full text-sm font-black uppercase tracking-widest mb-16">
+            <div className="flex items-center gap-3 bg-white shadow-xl border border-indigo-50 text-indigo-700 px-8 py-4 rounded-full text-sm font-black uppercase tracking-widest mb-16">
               <Zap className="w-5 h-5 fill-indigo-500 animate-pulse" /> 
-              <span>2 High-Def Renders Included</span>
+              <span>2 High-Def AI Renders Included</span>
               <ChevronRight className="w-4 h-4 opacity-30" />
             </div>
             
             <div className="flex flex-col sm:flex-row gap-5 justify-center w-full max-w-xl mx-auto">
-              <div className="relative group flex-1">
+              <div className="relative flex-1">
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
-                <button onClick={() => fileInputRef.current?.click()} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-6 rounded-3xl font-black text-2xl shadow-2xl shadow-indigo-200 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-4">
+                <button onClick={() => fileInputRef.current?.click()} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-6 rounded-3xl font-black text-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-4">
                   <Upload className="w-7 h-7" /> Upload Photo
                 </button>
               </div>
-              <div className="relative group flex-1">
+              <div className="relative flex-1">
                 <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileUpload} className="hidden" />
-                <button onClick={() => cameraInputRef.current?.click()} className="w-full bg-white hover:bg-slate-50 text-indigo-700 border-2 border-indigo-100 hover:border-indigo-200 px-8 py-6 rounded-3xl font-black text-2xl shadow-2xl shadow-slate-100 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-4">
+                <button onClick={() => cameraInputRef.current?.click()} className="w-full bg-white hover:bg-slate-50 text-indigo-700 border-2 border-indigo-100 px-8 py-6 rounded-3xl font-black text-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-4">
                   <Camera className="w-7 h-7" /> Snap Photo
                 </button>
               </div>
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 animate-in fade-in duration-700">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
             <div className="lg:col-span-8 space-y-8">
-              <div ref={resultsRef} className="bg-white rounded-3xl shadow-2xl shadow-slate-200 p-3 relative scroll-mt-24 overflow-hidden border border-slate-100 min-h-[500px]">
+              <div ref={resultsRef} className="bg-white rounded-3xl shadow-2xl p-3 relative min-h-[500px] border border-slate-100 overflow-hidden">
                 {(status === 'analyzing' || status === 'generating') && <LoadingOverlay message={loadingMessage} />}
                 {generatedImage ? (
                   <ImageComparator originalImage={image} generatedImage={generatedImage} activeColor={selectedColor || (customColor ? {name: customColor, hex: '#cccccc'} : null)} />
                 ) : (
-                  <div className="relative w-full bg-slate-100 rounded-2xl overflow-hidden min-h-[500px] flex items-center justify-center group">
-                    <img src={`data:image/jpeg;base64,${image}`} alt="Original Kitchen" className="w-full h-auto block max-h-[70vh] object-contain" />
-                    {status === 'idle' && !generatedImage && (
-                      <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] group-hover:backdrop-blur-0 transition-all flex items-center justify-center pointer-events-none">
-                        <span className="bg-white/95 text-slate-900 px-8 py-4 rounded-full text-xs font-black uppercase tracking-[0.2em] shadow-2xl scale-110">Original Perspective</span>
+                  <div className="relative w-full bg-slate-100 rounded-2xl overflow-hidden min-h-[500px] flex items-center justify-center">
+                    <img src={`data:image/jpeg;base64,${image}`} alt="Kitchen" className="w-full h-auto block max-h-[70vh] object-contain" />
+                    {status === 'idle' && (
+                      <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] flex items-center justify-center">
+                        <span className="bg-white/95 text-slate-900 px-8 py-4 rounded-full text-xs font-black uppercase tracking-widest shadow-2xl">Original Photo</span>
                       </div>
                     )}
                   </div>
                 )}
               </div>
               {analysisReasoning && (
-                <div className="bg-indigo-50 border border-indigo-100 rounded-3xl p-8 shadow-sm">
+                <div className="bg-indigo-50 border border-indigo-100 rounded-3xl p-8">
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="bg-indigo-600 p-2 rounded-xl shadow-lg shadow-indigo-100"><Sparkles className="w-5 h-5 text-white" /></div>
+                    <div className="bg-indigo-600 p-2 rounded-xl shadow-lg"><Sparkles className="w-5 h-5 text-white" /></div>
                     <h3 className="font-black text-indigo-900 uppercase tracking-tight text-lg">AI Design Analysis</h3>
                   </div>
                   <p className="text-slate-700 text-base leading-relaxed font-medium">{analysisReasoning}</p>
@@ -266,14 +220,14 @@ const App: React.FC = () => {
             </div>
 
             <div className="lg:col-span-4 space-y-8">
-              <div className="bg-white rounded-3xl shadow-xl shadow-slate-100 border border-slate-100 p-8">
+              <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-8">
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
-                  <Palette className="w-4 h-4 text-slate-300" /> Style Options
+                  <Palette className="w-4 h-4" /> Visualizer Tools
                 </h3>
                 <div className="space-y-6">
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Custom Color</label>
-                    <input type="text" value={customColor} onChange={(e) => {setCustomColor(e.target.value); if(e.target.value) setSelectedColor(null);}} placeholder="e.g. Hale Navy" className="w-full text-sm p-4 rounded-2xl border border-slate-100 focus:border-indigo-500 outline-none bg-slate-50 font-bold" />
+                    <input type="text" value={customColor} onChange={(e) => {setCustomColor(e.target.value); if(e.target.value) setSelectedColor(null);}} placeholder="e.g. Navy Blue" className="w-full text-sm p-4 rounded-2xl border border-slate-100 focus:border-indigo-500 outline-none bg-slate-50 font-bold" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
@@ -283,20 +237,20 @@ const App: React.FC = () => {
                       {SHEEN_OPTIONS.map(opt => (<option key={opt} value={opt}>{opt}</option>))}
                     </select>
                   </div>
-                  <button onClick={() => handleGenerate(undefined, undefined, "Applying custom finish...")} disabled={status !== 'idle' && status !== 'complete'} className="w-full bg-slate-900 hover:bg-black text-white text-sm font-black uppercase tracking-widest py-5 rounded-2xl transition-all flex items-center justify-center gap-3 shadow-2xl active:scale-95 disabled:opacity-50">
-                    <PaintBucket className="w-5 h-5" /> Render Preview
+                  <button onClick={() => handleGenerate()} disabled={status !== 'idle' && status !== 'complete'} className="w-full bg-slate-900 hover:bg-black text-white text-sm font-black uppercase tracking-widest py-5 rounded-2xl transition-all flex items-center justify-center gap-3 shadow-2xl active:scale-95 disabled:opacity-50">
+                    <PaintBucket className="w-5 h-5" /> Render Design
                   </button>
                 </div>
               </div>
 
               {aiSuggestions.length > 0 && (
-                <div className="bg-white rounded-3xl shadow-xl shadow-slate-100 border border-slate-100 p-8">
+                <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-8">
                   <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-amber-400" /> AI Suggestions
+                    <Sparkles className="w-4 h-4 text-amber-400" /> Designer Picks
                   </h3>
                   <div className="space-y-4">
                     {aiSuggestions.map((color) => (
-                      <button key={color.name} onClick={() => handleGenerate(color, undefined, `Applying ${color.name}...`)} className={`w-full flex items-center gap-5 p-4 rounded-2xl border-2 transition-all hover:shadow-lg active:scale-[0.98] ${selectedColor?.name === color.name ? 'border-indigo-600 bg-indigo-50 ring-4 ring-indigo-50' : 'border-slate-50 hover:border-slate-200 bg-white'}`}>
+                      <button key={color.name} onClick={() => handleGenerate(color)} className={`w-full flex items-center gap-5 p-4 rounded-2xl border-2 transition-all ${selectedColor?.name === color.name ? 'border-indigo-600 bg-indigo-50' : 'border-slate-50 hover:border-slate-200 bg-white'}`}>
                         <div className="w-14 h-14 rounded-2xl shadow-inner border border-black/5 shrink-0" style={{ backgroundColor: color.hex }} />
                         <div className="text-left flex-1 min-w-0">
                           <p className="font-black text-slate-900 truncate tracking-tight">{color.name}</p>
