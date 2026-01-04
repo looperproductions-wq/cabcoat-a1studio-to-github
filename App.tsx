@@ -55,7 +55,7 @@ const App: React.FC = () => {
 
     try {
       setStatus('analyzing'); 
-      setLoadingMessage("Analyzing Kitchen Details..."); 
+      setLoadingMessage("Analyzing Kitchen..."); 
       setError(null); 
       setGeneratedImage(null);
       const base64 = await fileToBase64(file);
@@ -63,7 +63,7 @@ const App: React.FC = () => {
       
       const analysis = await analyzeKitchenAndSuggestColors(base64);
       if (!analysis.isKitchen) {
-        setError("AI could not confirm this is a kitchen photo. Please try another angle.");
+        setError("AI could not verify this is a kitchen. Please try a different photo.");
         setImage(null);
         setStatus('idle');
         return;
@@ -72,14 +72,13 @@ const App: React.FC = () => {
       setAnalysisReasoning(analysis.reasoning);
       setStatus('idle');
     } catch (err: any) { 
-      setError(err.message || "Failed to analyze photo."); 
+      setError(err.message); 
       setStatus('idle'); 
     }
   };
 
   const handleGenerate = async (newColor?: ColorOption | null, newHardware?: HardwareOption) => {
     if (!image) return;
-    
     if (!userEmail && generationCount >= GENERATION_LIMIT) { 
       setShowEmailGate(true); 
       return; 
@@ -102,7 +101,7 @@ const App: React.FC = () => {
       effectiveColorHex = selectedColor?.hex || null;
     }
 
-    setLoadingMessage("Generating New Look...");
+    setLoadingMessage("Painting Cabinets...");
     if (resultsRef.current) resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     
     try {
@@ -117,7 +116,7 @@ const App: React.FC = () => {
         localStorage.setItem('cabcoat_gen_count', newCount.toString()); 
       }
     } catch (err: any) { 
-      setError(err.message || "Visualization failed."); 
+      setError(err.message); 
       setStatus('idle'); 
     }
   };
@@ -129,8 +128,6 @@ const App: React.FC = () => {
     setError(null);
     setSelectedColor(null);
     setCustomColor('');
-    setAiSuggestions([]);
-    setAnalysisReasoning('');
     if (fileInputRef.current) fileInputRef.current.value = ''; 
   };
 
@@ -146,12 +143,12 @@ const App: React.FC = () => {
             </div>
             <div>
               <h1 className="text-xl font-black text-slate-900 tracking-tighter leading-none">CabCoat AI</h1>
-              <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mt-1">Cabinet Painting Pro</p>
+              <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mt-1">Professional Visualization</p>
             </div>
           </div>
           {image && (
-            <button onClick={resetApp} className="text-sm font-bold text-slate-400 hover:text-slate-800 flex items-center gap-1 px-3 py-1.5 hover:bg-slate-100 rounded-lg transition-colors">
-              <RefreshCw className="w-4 h-4" /> Start Over
+            <button onClick={resetApp} className="text-sm font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 px-3 py-1.5 hover:bg-slate-100 rounded-lg transition-colors">
+              <RefreshCw className="w-4 h-4" /> Reset
             </button>
           )}
         </div>
@@ -163,20 +160,20 @@ const App: React.FC = () => {
             <AlertCircle className="w-6 h-6 text-red-600 shrink-0" />
             <div className="flex-1 text-left">
               <h4 className="text-red-900 font-black uppercase tracking-tight text-sm mb-1">System Message</h4>
-              <p className="text-red-700 text-sm font-medium">{error}</p>
+              <p className="text-red-700 text-sm font-medium leading-relaxed">{error}</p>
             </div>
           </div>
         )}
 
         {!image ? (
           <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in-95">
-            <h2 className="text-6xl font-black text-slate-900 mb-6 tracking-tighter max-w-3xl">Visualize Your Dream Kitchen</h2>
+            <h2 className="text-6xl font-black text-slate-900 mb-6 tracking-tighter max-w-3xl">Visualize Your New Kitchen</h2>
             <p className="text-xl text-slate-500 max-w-2xl mb-10 leading-relaxed font-medium">
-              See your cabinets repainted in seconds. Upload a photo and let our AI show you the future of your kitchen.
+              Take the guesswork out of cabinet painting. Upload a photo and see your dream color in photorealistic 4K.
             </p>
             <div className="flex items-center gap-3 bg-white shadow-xl border border-indigo-50 text-indigo-700 px-8 py-4 rounded-full text-sm font-black uppercase tracking-widest mb-16">
               <Zap className="w-5 h-5 fill-indigo-500 animate-pulse" /> 
-              <span>2 HD Renders Included</span>
+              <span>2 High-Def Renders Included</span>
               <ChevronRight className="w-4 h-4 opacity-30" />
             </div>
             
@@ -217,7 +214,7 @@ const App: React.FC = () => {
                 <div className="bg-indigo-50 border border-indigo-100 rounded-3xl p-8">
                   <div className="flex items-center gap-4 mb-4 text-left">
                     <div className="bg-indigo-600 p-2 rounded-xl shadow-lg"><Sparkles className="w-5 h-5 text-white" /></div>
-                    <h3 className="font-black text-indigo-900 uppercase tracking-tight text-lg">AI Design Analysis</h3>
+                    <h3 className="font-black text-indigo-900 uppercase tracking-tight text-lg">AI Designer Notes</h3>
                   </div>
                   <p className="text-slate-700 text-base text-left leading-relaxed font-medium">{analysisReasoning}</p>
                 </div>
@@ -227,23 +224,23 @@ const App: React.FC = () => {
             <div className="lg:col-span-4 space-y-8">
               <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-8">
                 <h3 className="text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
-                  <Palette className="w-4 h-4" /> Visualizer Tools
+                  <Palette className="w-4 h-4" /> Styling Station
                 </h3>
                 <div className="space-y-6">
                   <div className="text-left">
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Custom Color</label>
-                    <input type="text" value={customColor} onChange={(e) => {setCustomColor(e.target.value); if(e.target.value) setSelectedColor(null);}} placeholder="e.g. Hale Navy" className="w-full text-sm p-4 rounded-2xl border border-slate-100 focus:border-indigo-500 outline-none bg-slate-50 font-bold" />
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Custom Paint Color</label>
+                    <input type="text" value={customColor} onChange={(e) => {setCustomColor(e.target.value); if(e.target.value) setSelectedColor(null);}} placeholder="e.g. Navy Blue" className="w-full text-sm p-4 rounded-2xl border border-slate-100 focus:border-indigo-500 outline-none bg-slate-50 font-bold" />
                   </div>
                   <div className="text-left">
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
-                      <Droplet className="w-3 h-3 text-indigo-400" /> Finish
+                      <Droplet className="w-3 h-3 text-indigo-400" /> Sheen
                     </label>
                     <select value={selectedSheen} onChange={(e) => setSelectedSheen(e.target.value)} className="w-full text-sm p-4 rounded-2xl border border-slate-100 focus:border-indigo-500 outline-none bg-slate-50 font-black appearance-none cursor-pointer">
                       {SHEEN_OPTIONS.map(opt => (<option key={opt} value={opt}>{opt}</option>))}
                     </select>
                   </div>
                   <button onClick={() => handleGenerate()} disabled={status !== 'idle' && status !== 'complete'} className="w-full bg-slate-900 hover:bg-black text-white text-sm font-black uppercase tracking-widest py-5 rounded-2xl transition-all flex items-center justify-center gap-3 shadow-2xl active:scale-95 disabled:opacity-50">
-                    <PaintBucket className="w-5 h-5" /> Render Design
+                    <PaintBucket className="w-5 h-5" /> Update Preview
                   </button>
                 </div>
               </div>
@@ -251,7 +248,7 @@ const App: React.FC = () => {
               {aiSuggestions.length > 0 && (
                 <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-8">
                   <h3 className="text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-amber-400" /> Designer Picks
+                    <Sparkles className="w-4 h-4 text-amber-400" /> AI Suggestions
                   </h3>
                   <div className="space-y-4">
                     {aiSuggestions.map((color) => (
