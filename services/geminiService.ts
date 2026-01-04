@@ -16,13 +16,8 @@ export const fileToBase64 = (file: File): Promise<string> => {
 };
 
 export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promise<AnalysisResult> => {
-  // Use process.env.API_KEY exclusively as per guidelines
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("API_KEY is not defined in the environment. Please ensure it is set in Vercel.");
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
+  // Directly initialize per request as per coding guidelines
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
   
   try {
     const response = await ai.models.generateContent({
@@ -30,7 +25,7 @@ export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promi
       contents: {
         parts: [
           { inlineData: { mimeType: "image/jpeg", data: base64Image } },
-          { text: "Analyze this kitchen's existing elements (flooring, countertops, backsplash, lighting). Suggest 4 specific cabinet paint colors from major brands (Benjamin Moore, Sherwin Williams) that would complement the room perfectly. Identify if it's actually a kitchen. Return the response in JSON format." },
+          { text: "Analyze this kitchen. 1. Identify if it is a kitchen. 2. Suggest 4 cabinet paint colors (Benjamin Moore/Sherwin Williams) that match the counters/floors. Return JSON." },
         ],
       },
       config: {
@@ -39,7 +34,7 @@ export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promi
           type: Type.OBJECT,
           properties: {
             isKitchen: { type: Type.BOOLEAN },
-            reasoning: { type: Type.STRING, description: "Brief design advice on why these colors work." },
+            reasoning: { type: Type.STRING },
             suggestedColors: {
               type: Type.ARRAY,
               items: {
@@ -48,8 +43,8 @@ export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promi
                   name: { type: Type.STRING },
                   manufacturer: { type: Type.STRING },
                   code: { type: Type.STRING },
-                  hex: { type: Type.STRING, description: "A representative hex code for the paint color" },
-                  description: { type: Type.STRING, description: "Why this fits the room" }
+                  hex: { type: Type.STRING },
+                  description: { type: Type.STRING }
                 }
               }
             }
@@ -60,11 +55,11 @@ export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promi
     });
     
     const text = response.text;
-    if (!text) throw new Error("No response from AI engine.");
+    if (!text) throw new Error("AI returned an empty response.");
     return JSON.parse(text) as AnalysisResult;
   } catch (error: any) {
-    console.error("Error analyzing image:", error);
-    throw new Error(error.message || "Analysis failed.");
+    console.error("Analysis Error:", error);
+    throw new Error("Unable to connect to AI. Please verify your Vercel API_KEY settings and redeploy.");
   }
 };
 
@@ -76,65 +71,39 @@ export const generateCabinetPreview = async (
   customInstruction?: string,
   sheen?: string
 ): Promise<string> => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("API_KEY is not defined in the environment.");
-  }
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
 
-  const ai = new GoogleGenAI({ apiKey });
   try {
     let prompt = `REPAINT KITCHEN CABINETS:
-    - Apply a professional factory-sprayed finish to all visible cabinets and islands.
-    - Maintain existing countertops, backsplash, appliances, and floor.`;
+    - Apply professional factory-sprayed paint to all visible cabinets.
+    - Keep countertops, backsplash, and appliances exactly as they are.`;
     
-    if (colorName) {
-      prompt += `\n- NEW COLOR: "${colorName}"${colorHex ? ` (Reference Hex: ${colorHex})` : ''}.`;
-    }
-    
-    if (sheen && sheen !== 'Default') {
-      prompt += `\n- FINISH: ${sheen} sheen.`;
-    }
+    if (colorName) prompt += `\n- COLOR: "${colorName}"${colorHex ? ` (Hex: ${colorHex})` : ''}.`;
+    if (sheen && sheen !== 'Default') prompt += `\n- FINISH: ${sheen} sheen.`;
+    if (hardwareName && hardwareName !== 'Keep Existing') prompt += `\n- HARDWARE: Update to ${hardwareName}.`;
+    if (customInstruction) prompt += `\n- NOTES: ${customInstruction}`;
 
-    if (hardwareName && hardwareName !== 'Keep Existing') {
-      prompt += `\n- HARDWARE: Replace handles with ${hardwareName}.`;
-    }
-
-    if (customInstruction && customInstruction.trim()) {
-      prompt += `\n- USER REQUEST: "${customInstruction}"`;
-    }
-
-    prompt += `\n- Ensure photorealistic lighting and shadows. Return the modified image.`;
+    prompt += `\n- Create a photorealistic 4K architectural photography result.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: {
         parts: [
-          {
-            inlineData: {
-              data: base64Image,
-              mimeType: 'image/jpeg',
-            },
-          },
-          {
-            text: prompt,
-          },
+          { inlineData: { data: base64Image, mimeType: 'image/jpeg' } },
+          { text: prompt },
         ],
       },
       config: {
-        imageConfig: {
-          aspectRatio: "1:1"
-        }
+        imageConfig: { aspectRatio: "1:1" }
       }
     });
 
     for (const part of response.candidates?.[0]?.content?.parts || []) {
-      if (part.inlineData) {
-        return part.inlineData.data;
-      }
+      if (part.inlineData) return part.inlineData.data;
     }
-    throw new Error("No image generated in response");
+    throw new Error("Visualization engine did not return an image.");
   } catch (error: any) {
-    console.error("Error generating preview:", error);
-    throw new Error(error.message || "Generation failed.");
+    console.error("Generation Error:", error);
+    throw new Error("Failed to generate preview. Check Vercel logs and API_KEY.");
   }
 };
