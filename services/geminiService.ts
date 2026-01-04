@@ -15,13 +15,11 @@ export const fileToBase64 = (file: File): Promise<string> => {
   });
 };
 
-const getAIClient = () => {
-  return new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
-};
-
 export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promise<AnalysisResult> => {
   try {
-    const ai = getAIClient();
+    // Create instance right before call to ensure up-to-date key
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview", 
       contents: {
@@ -69,7 +67,7 @@ export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promi
     return JSON.parse(text) as AnalysisResult;
   } catch (error: any) {
     console.error("Error analyzing image:", error);
-    throw new Error(error.message || "Failed to analyze kitchen image.");
+    throw new Error(error.message || "Failed to analyze kitchen image. Please check your API key.");
   }
 };
 
@@ -82,7 +80,7 @@ export const generateCabinetPreview = async (
   sheen?: string
 ): Promise<string> => {
   try {
-    const ai = getAIClient();
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     let prompt = `REPAINT KITCHEN CABINETS:
     - Apply a professional factory-sprayed finish to all visible cabinets and islands.
@@ -138,6 +136,6 @@ export const generateCabinetPreview = async (
     throw new Error("The visualizer was unable to process this request.");
   } catch (error: any) {
     console.error("Error generating preview:", error);
-    throw new Error(error.message || "Visualization failed. Please try again.");
+    throw new Error(error.message || "Visualization failed. Please check your API key.");
   }
 };
