@@ -16,8 +16,9 @@ export const fileToBase64 = (file: File): Promise<string> => {
 };
 
 export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promise<AnalysisResult> => {
-  // Directly initialize per request as per coding guidelines
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+  // Initialize with the environment variable directly. 
+  // Assume process.env.API_KEY is pre-configured and valid.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   try {
     const response = await ai.models.generateContent({
@@ -59,7 +60,7 @@ export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promi
     return JSON.parse(text) as AnalysisResult;
   } catch (error: any) {
     console.error("Analysis Error:", error);
-    throw new Error("Unable to connect to AI. Please verify your Vercel API_KEY settings and redeploy.");
+    throw new Error(error.message || "Failed to analyze kitchen image.");
   }
 };
 
@@ -71,19 +72,31 @@ export const generateCabinetPreview = async (
   customInstruction?: string,
   sheen?: string
 ): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   try {
     let prompt = `REPAINT KITCHEN CABINETS:
-    - Apply professional factory-sprayed paint to all visible cabinets.
-    - Keep countertops, backsplash, and appliances exactly as they are.`;
+    - Apply professional factory-sprayed paint to all visible cabinets and islands.
+    - Style: Photorealistic 4K architectural interior photography.
+    - Preservation: Do not change countertops, backsplash, appliances, or flooring.`;
     
-    if (colorName) prompt += `\n- COLOR: "${colorName}"${colorHex ? ` (Hex: ${colorHex})` : ''}.`;
-    if (sheen && sheen !== 'Default') prompt += `\n- FINISH: ${sheen} sheen.`;
-    if (hardwareName && hardwareName !== 'Keep Existing') prompt += `\n- HARDWARE: Update to ${hardwareName}.`;
-    if (customInstruction) prompt += `\n- NOTES: ${customInstruction}`;
+    if (colorName) {
+      prompt += `\n- NEW CABINET COLOR: "${colorName}"${colorHex ? ` (Representative Hex: ${colorHex})` : ''}.`;
+    }
+    
+    if (sheen && sheen !== 'Default') {
+      prompt += `\n- PAINT FINISH: ${sheen} sheen.`;
+    }
 
-    prompt += `\n- Create a photorealistic 4K architectural photography result.`;
+    if (hardwareName && hardwareName !== 'Keep Existing') {
+      prompt += `\n- HARDWARE: Replace current handles/knobs with ${hardwareName}.`;
+    }
+
+    if (customInstruction && customInstruction.trim()) {
+      prompt += `\n- ADDITIONAL INSTRUCTIONS: "${customInstruction}"`;
+    }
+
+    prompt += `\n- Output only the modified image with realistic lighting and shadows.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
@@ -101,9 +114,9 @@ export const generateCabinetPreview = async (
     for (const part of response.candidates?.[0]?.content?.parts || []) {
       if (part.inlineData) return part.inlineData.data;
     }
-    throw new Error("Visualization engine did not return an image.");
+    throw new Error("The image generation model did not return visual data.");
   } catch (error: any) {
     console.error("Generation Error:", error);
-    throw new Error("Failed to generate preview. Check Vercel logs and API_KEY.");
+    throw new Error(error.message || "Visualization failed. Check API configuration.");
   }
 };
