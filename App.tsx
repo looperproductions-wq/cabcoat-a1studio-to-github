@@ -9,7 +9,7 @@ import { ImageComparator } from './components/ImageComparator';
 import { EmailGateModal } from './components/EmailGateModal';
 import { MaintenanceScreen } from './components/MaintenanceScreen';
 
-const APP_VERSION = 'v2.0.0';
+const APP_VERSION = 'v2.0.1';
 const SHEEN_OPTIONS = ['Default', 'Matte', 'Satin', 'Semi-Gloss', 'High-Gloss'];
 const GENERATION_LIMIT = 2;
 const MAINTENANCE_MODE = false;
@@ -76,7 +76,7 @@ const App: React.FC = () => {
       setStatus('idle');
     } catch (err: any) { 
       console.error(err);
-      setError(`Analysis Failed: ${err.message}`); 
+      setError(`System Message: ${err.message}`); 
       setStatus('idle'); 
     }
   };
@@ -143,7 +143,7 @@ const App: React.FC = () => {
       }
     } catch (err: any) { 
       console.error(err); 
-      setError(`Design Engine Error: ${err.message}`); 
+      setError(`System Message: ${err.message}`); 
       setStatus('idle'); 
     }
   };
@@ -228,7 +228,6 @@ const App: React.FC = () => {
                 </button>
               </div>
             </div>
-            <p className="mt-12 text-[10px] text-slate-400 uppercase tracking-[0.4em] font-black">Professional Cabinet Painting Engine</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 animate-in fade-in duration-700">
@@ -262,29 +261,16 @@ const App: React.FC = () => {
             <div className="lg:col-span-4 space-y-8">
               <div className="bg-white rounded-3xl shadow-xl shadow-slate-100 border border-slate-100 p-8">
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
-                  <MessageSquarePlus className="w-4 h-4 text-slate-300" /> Refining Details
-                </h3>
-                <textarea 
-                  value={customInstruction} 
-                  onChange={(e) => setCustomInstruction(e.target.value)} 
-                  placeholder="E.g., Keep island wood, paint walls light gray..." 
-                  className="w-full text-sm p-5 rounded-2xl border border-slate-100 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none resize-none min-h-[120px] bg-slate-50 placeholder:text-slate-300 text-slate-700 mb-5 transition-all font-medium" 
-                />
-                <button onClick={() => handleGenerate(undefined, undefined, "Applying custom tweaks...")} className="w-full text-xs font-black text-indigo-600 uppercase tracking-widest border-2 border-indigo-50 py-4 rounded-2xl hover:bg-indigo-600 hover:text-white transition-all active:scale-95 shadow-sm">Apply Tweaks</button>
-              </div>
-
-              <div className="bg-white rounded-3xl shadow-xl shadow-slate-100 border border-slate-100 p-8">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
-                  <Palette className="w-4 h-4 text-slate-300" /> Custom Finish
+                  <Palette className="w-4 h-4 text-slate-300" /> Style Options
                 </h3>
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Color Brand / Name</label>
-                    <input type="text" value={customColor} onChange={(e) => {setCustomColor(e.target.value); if(e.target.value) setSelectedColor(null);}} placeholder="e.g. SW Naval" className="w-full text-sm p-4 rounded-2xl border border-slate-100 focus:border-indigo-500 outline-none bg-slate-50 font-bold" />
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Custom Color</label>
+                    <input type="text" value={customColor} onChange={(e) => {setCustomColor(e.target.value); if(e.target.value) setSelectedColor(null);}} placeholder="e.g. Hale Navy" className="w-full text-sm p-4 rounded-2xl border border-slate-100 focus:border-indigo-500 outline-none bg-slate-50 font-bold" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
-                      <Droplet className="w-3 h-3 text-indigo-400" /> Desired Sheen
+                      <Droplet className="w-3 h-3 text-indigo-400" /> Finish
                     </label>
                     <select value={selectedSheen} onChange={(e) => setSelectedSheen(e.target.value)} className="w-full text-sm p-4 rounded-2xl border border-slate-100 focus:border-indigo-500 outline-none bg-slate-50 font-black appearance-none cursor-pointer">
                       {SHEEN_OPTIONS.map(opt => (<option key={opt} value={opt}>{opt}</option>))}
@@ -299,68 +285,25 @@ const App: React.FC = () => {
               {aiSuggestions.length > 0 && (
                 <div className="bg-white rounded-3xl shadow-xl shadow-slate-100 border border-slate-100 p-8">
                   <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-amber-400" /> Design Palette
+                    <Sparkles className="w-4 h-4 text-amber-400" /> AI Suggestions
                   </h3>
                   <div className="space-y-4">
                     {aiSuggestions.map((color) => (
-                      <button key={color.name} onClick={() => handleGenerate(color, undefined, `Applying ${color.name}...`)} disabled={status !== 'idle' && status !== 'complete'} className={`w-full flex items-center gap-5 p-4 rounded-2xl border-2 transition-all hover:shadow-lg active:scale-[0.98] ${selectedColor?.name === color.name ? 'border-indigo-600 bg-indigo-50 ring-4 ring-indigo-50' : 'border-slate-50 hover:border-slate-200 bg-white'}`}>
-                        <div className="w-14 h-14 rounded-2xl shadow-inner border border-black/5 shrink-0 rotate-3 group-hover:rotate-0 transition-transform" style={{ backgroundColor: color.hex }} />
+                      <button key={color.name} onClick={() => handleGenerate(color, undefined, `Applying ${color.name}...`)} className={`w-full flex items-center gap-5 p-4 rounded-2xl border-2 transition-all hover:shadow-lg active:scale-[0.98] ${selectedColor?.name === color.name ? 'border-indigo-600 bg-indigo-50 ring-4 ring-indigo-50' : 'border-slate-50 hover:border-slate-200 bg-white'}`}>
+                        <div className="w-14 h-14 rounded-2xl shadow-inner border border-black/5 shrink-0" style={{ backgroundColor: color.hex }} />
                         <div className="text-left flex-1 min-w-0">
                           <p className="font-black text-slate-900 truncate tracking-tight">{color.name}</p>
                           <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest truncate">{color.description}</p>
                         </div>
-                        {selectedColor?.name === color.name && (<Check className="w-5 h-5 text-indigo-600" />)}
                       </button>
                     ))}
                   </div>
                 </div>
               )}
-
-              <div className="bg-white rounded-3xl shadow-xl shadow-slate-100 border border-slate-100 p-8">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-6">Trending Modern Classics</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <button onClick={() => handleGenerate(null, undefined, "Restoring original finish...")} className={`flex flex-col items-center justify-center p-5 rounded-2xl border-2 transition-all active:scale-[0.98] ${selectedColor === null && !customColor ? 'border-indigo-600 bg-indigo-50 ring-4 ring-indigo-50' : 'border-slate-50 hover:border-slate-200 hover:bg-slate-50'}`}>
-                    <div className="w-16 h-16 rounded-2xl shadow-sm mb-4 border border-black/5 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center"><Ban className="w-6 h-6 text-slate-300" /></div>
-                    <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest text-center">Original</span>
-                  </button>
-                  {POPULAR_COLORS.slice(0, 3).map((color) => (
-                    <button key={color.name} onClick={() => handleGenerate(color, undefined, `Applying ${color.name}...`)} className={`flex flex-col items-center justify-center p-5 rounded-2xl border-2 transition-all active:scale-[0.98] ${selectedColor?.name === color.name ? 'border-indigo-600 bg-indigo-50 ring-4 ring-indigo-50' : 'border-slate-50 hover:border-slate-200 hover:bg-slate-50'}`}>
-                      <div className="w-16 h-16 rounded-2xl shadow-sm mb-4 border border-black/5" style={{ backgroundColor: color.hex }} />
-                      <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest text-center truncate w-full">{color.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
         )}
       </main>
-
-      <footer className="bg-white border-t border-slate-200 py-20 px-4 mt-24">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-16 text-center md:text-left">
-          <div className="flex flex-col items-center md:items-start max-w-sm">
-             <div className="flex items-center gap-3 mb-6">
-               <div className="bg-indigo-600 p-2 rounded-xl">
-                 <PaintBucket className="w-8 h-8 text-white" />
-               </div>
-               <h2 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">CabCoat AI</h2>
-             </div>
-             <p className="text-sm text-slate-400 font-bold uppercase tracking-[0.2em] mb-4">Photorealistic Visualization</p>
-             <p className="text-sm text-slate-500 font-medium leading-relaxed">
-               Advanced visualization for cabinet painting and interior transformations.
-             </p>
-          </div>
-          <div className="flex flex-col items-center md:items-end gap-5">
-            <div className="flex items-center gap-3 text-indigo-600 bg-indigo-50 px-8 py-4 rounded-full text-xs font-black uppercase tracking-widest border border-indigo-100 shadow-sm">
-               <ShieldCheck className="w-5 h-5" /> Enterprise Visualizer
-            </div>
-            <div className="mt-4 text-[10px] text-slate-400 uppercase font-black tracking-[0.4em] space-y-2 opacity-60">
-                <p>{APP_VERSION} © CabCoat AI - All Rights Reserved</p>
-                <p>Repaint with Confidence</p>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };
