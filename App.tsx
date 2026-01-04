@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, PaintBucket, Sparkles, RefreshCw, AlertCircle, Check, MessageSquarePlus, PenTool, Ban, Palette, Droplet, Camera, Zap, ShieldCheck, ChevronRight } from 'lucide-react';
+import { Upload, PaintBucket, Sparkles, RefreshCw, AlertCircle, Check, MessageSquarePlus, PenTool, Ban, Palette, Droplet, Camera, Zap, ChevronRight } from 'lucide-react';
 import { fileToBase64, analyzeKitchenAndSuggestColors, generateCabinetPreview } from './services/geminiService';
 import { POPULAR_COLORS, HARDWARE_OPTIONS } from './constants';
 import { ColorOption, HardwareOption, ProcessingState } from './types';
@@ -9,7 +9,6 @@ import { ImageComparator } from './components/ImageComparator';
 import { EmailGateModal } from './components/EmailGateModal';
 import { MaintenanceScreen } from './components/MaintenanceScreen';
 
-const APP_VERSION = 'v2.0.1';
 const SHEEN_OPTIONS = ['Default', 'Matte', 'Satin', 'Semi-Gloss', 'High-Gloss'];
 const GENERATION_LIMIT = 2;
 const MAINTENANCE_MODE = false;
@@ -57,10 +56,9 @@ const App: React.FC = () => {
       setError('Please upload a valid image file (JPEG or PNG).'); 
       return; 
     }
-
     try {
       setStatus('analyzing'); 
-      setLoadingMessage("Analyzing Kitchen Layout..."); 
+      setLoadingMessage("Analyzing Kitchen..."); 
       setError(null); 
       setGeneratedImage(null);
       setSelectedColor(null); 
@@ -71,11 +69,19 @@ const App: React.FC = () => {
       const base64 = await fileToBase64(file);
       setImage(base64);
       const analysis = await analyzeKitchenAndSuggestColors(base64);
+      
+      if (!analysis.isKitchen) {
+         setError("The system couldn't confirm this is a kitchen photo. Please try a different angle.");
+         setImage(null);
+         setStatus('idle');
+         return;
+      }
+
       setAiSuggestions(analysis.suggestedColors.map(c => ({ ...c, isAI: true })));
       setAnalysisReasoning(analysis.reasoning);
       setStatus('idle');
     } catch (err: any) { 
-      console.error(err);
+      console.error(err); 
       setError(`System Message: ${err.message}`); 
       setStatus('idle'); 
     }
@@ -83,6 +89,7 @@ const App: React.FC = () => {
 
   const handleGenerate = async (newColor?: ColorOption | null, newHardware?: HardwareOption, specificMessage?: string) => {
     if (!image) return;
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     
     if (!userEmail && generationCount >= GENERATION_LIMIT) { 
       setShowEmailGate(true); 
@@ -114,7 +121,7 @@ const App: React.FC = () => {
     }
 
     if (!effectiveColorName && hardwareToUse.id === 'none' && !customInstruction.trim() && selectedSheen === 'Default' && newColor !== null) { 
-      setError("Please select a color or style to visualize."); 
+      setError("Please select a color or style option."); 
       return; 
     }
 
@@ -182,7 +189,7 @@ const App: React.FC = () => {
           <div className="flex items-center gap-3">
             {image && (
               <button onClick={resetApp} className="text-sm font-bold text-slate-400 hover:text-slate-800 flex items-center gap-1 transition-colors px-3 py-1.5 hover:bg-slate-100 rounded-lg">
-                <RefreshCw className="w-4 h-4" /> Reset
+                <RefreshCw className="w-4 h-4" /> Start Over
               </button>
             )}
           </div>
@@ -192,8 +199,8 @@ const App: React.FC = () => {
       <main className="max-w-6xl mx-auto px-4 py-8">
         {error && (
           <div className="mb-8 bg-red-50 border border-red-200 rounded-2xl p-6 flex items-start gap-5 animate-in fade-in slide-in-from-top-4 duration-500">
-            <div className="bg-red-100 p-2 rounded-xl">
-               <AlertCircle className="w-6 h-6 text-red-600 shrink-0" />
+            <div className="bg-red-100 p-2 rounded-xl shrink-0">
+               <AlertCircle className="w-6 h-6 text-red-600" />
             </div>
             <div className="flex-1">
               <h4 className="text-red-900 font-black uppercase tracking-tight text-sm mb-1">System Message</h4>
@@ -232,13 +239,13 @@ const App: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 animate-in fade-in duration-700">
             <div className="lg:col-span-8 space-y-8">
-              <div ref={resultsRef} className="bg-white rounded-3xl shadow-2xl shadow-slate-200 p-3 relative scroll-mt-24 overflow-hidden border border-slate-100">
+              <div ref={resultsRef} className="bg-white rounded-3xl shadow-2xl shadow-slate-200 p-3 relative scroll-mt-24 overflow-hidden border border-slate-100 min-h-[500px]">
                 {(status === 'analyzing' || status === 'generating') && <LoadingOverlay message={loadingMessage} />}
                 {generatedImage ? (
                   <ImageComparator originalImage={image} generatedImage={generatedImage} activeColor={selectedColor || (customColor ? {name: customColor, hex: '#cccccc'} : null)} />
                 ) : (
-                  <div className="relative w-full bg-slate-100 rounded-2xl overflow-hidden min-h-[500px] group">
-                    <img src={`data:image/jpeg;base64,${image}`} alt="Original Kitchen" className="w-full h-auto block" />
+                  <div className="relative w-full bg-slate-100 rounded-2xl overflow-hidden min-h-[500px] flex items-center justify-center group">
+                    <img src={`data:image/jpeg;base64,${image}`} alt="Original Kitchen" className="w-full h-auto block max-h-[70vh] object-contain" />
                     {status === 'idle' && !generatedImage && (
                       <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] group-hover:backdrop-blur-0 transition-all flex items-center justify-center pointer-events-none">
                         <span className="bg-white/95 text-slate-900 px-8 py-4 rounded-full text-xs font-black uppercase tracking-[0.2em] shadow-2xl scale-110">Original Perspective</span>
