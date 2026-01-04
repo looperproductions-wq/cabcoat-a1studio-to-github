@@ -55,7 +55,7 @@ const App: React.FC = () => {
 
     try {
       setStatus('analyzing'); 
-      setLoadingMessage("Analyzing Layout..."); 
+      setLoadingMessage("Analyzing Kitchen Details..."); 
       setError(null); 
       setGeneratedImage(null);
       const base64 = await fileToBase64(file);
@@ -63,7 +63,7 @@ const App: React.FC = () => {
       
       const analysis = await analyzeKitchenAndSuggestColors(base64);
       if (!analysis.isKitchen) {
-        setError("AI could not confirm this is a kitchen photo. Please try another shot.");
+        setError("AI could not confirm this is a kitchen photo. Please try another angle.");
         setImage(null);
         setStatus('idle');
         return;
@@ -72,13 +72,14 @@ const App: React.FC = () => {
       setAnalysisReasoning(analysis.reasoning);
       setStatus('idle');
     } catch (err: any) { 
-      setError(err.message); 
+      setError(err.message || "Failed to analyze photo."); 
       setStatus('idle'); 
     }
   };
 
   const handleGenerate = async (newColor?: ColorOption | null, newHardware?: HardwareOption) => {
     if (!image) return;
+    
     if (!userEmail && generationCount >= GENERATION_LIMIT) { 
       setShowEmailGate(true); 
       return; 
@@ -101,7 +102,7 @@ const App: React.FC = () => {
       effectiveColorHex = selectedColor?.hex || null;
     }
 
-    setLoadingMessage("Generating Preview...");
+    setLoadingMessage("Generating New Look...");
     if (resultsRef.current) resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     
     try {
@@ -116,7 +117,7 @@ const App: React.FC = () => {
         localStorage.setItem('cabcoat_gen_count', newCount.toString()); 
       }
     } catch (err: any) { 
-      setError(err.message); 
+      setError(err.message || "Visualization failed."); 
       setStatus('idle'); 
     }
   };
@@ -126,6 +127,10 @@ const App: React.FC = () => {
     setGeneratedImage(null); 
     setStatus('idle'); 
     setError(null);
+    setSelectedColor(null);
+    setCustomColor('');
+    setAiSuggestions([]);
+    setAnalysisReasoning('');
     if (fileInputRef.current) fileInputRef.current.value = ''; 
   };
 
@@ -141,7 +146,7 @@ const App: React.FC = () => {
             </div>
             <div>
               <h1 className="text-xl font-black text-slate-900 tracking-tighter leading-none">CabCoat AI</h1>
-              <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mt-1">Cabinet Painting Visualizer</p>
+              <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mt-1">Cabinet Painting Pro</p>
             </div>
           </div>
           {image && (
@@ -156,22 +161,22 @@ const App: React.FC = () => {
         {error && (
           <div className="mb-8 bg-red-50 border border-red-200 rounded-2xl p-6 flex items-start gap-4 animate-in fade-in slide-in-from-top-4">
             <AlertCircle className="w-6 h-6 text-red-600 shrink-0" />
-            <div className="flex-1">
-              <h4 className="text-red-900 font-black uppercase tracking-tight text-sm mb-1">System Error</h4>
+            <div className="flex-1 text-left">
+              <h4 className="text-red-900 font-black uppercase tracking-tight text-sm mb-1">System Message</h4>
               <p className="text-red-700 text-sm font-medium">{error}</p>
             </div>
           </div>
         )}
 
         {!image ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in-95">
             <h2 className="text-6xl font-black text-slate-900 mb-6 tracking-tighter max-w-3xl">Visualize Your Dream Kitchen</h2>
             <p className="text-xl text-slate-500 max-w-2xl mb-10 leading-relaxed font-medium">
-              Don't guess your next cabinet color. See it instantly with professional AI precision.
+              See your cabinets repainted in seconds. Upload a photo and let our AI show you the future of your kitchen.
             </p>
             <div className="flex items-center gap-3 bg-white shadow-xl border border-indigo-50 text-indigo-700 px-8 py-4 rounded-full text-sm font-black uppercase tracking-widest mb-16">
               <Zap className="w-5 h-5 fill-indigo-500 animate-pulse" /> 
-              <span>2 High-Def AI Renders Included</span>
+              <span>2 HD Renders Included</span>
               <ChevronRight className="w-4 h-4 opacity-30" />
             </div>
             
@@ -185,7 +190,7 @@ const App: React.FC = () => {
               <div className="relative flex-1">
                 <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileUpload} className="hidden" />
                 <button onClick={() => cameraInputRef.current?.click()} className="w-full bg-white hover:bg-slate-50 text-indigo-700 border-2 border-indigo-100 px-8 py-6 rounded-3xl font-black text-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-4">
-                  <Camera className="w-7 h-7" /> Snap Photo
+                  <Camera className="w-7 h-7" /> Take Photo
                 </button>
               </div>
             </div>
@@ -198,8 +203,8 @@ const App: React.FC = () => {
                 {generatedImage ? (
                   <ImageComparator originalImage={image} generatedImage={generatedImage} activeColor={selectedColor || (customColor ? {name: customColor, hex: '#cccccc'} : null)} />
                 ) : (
-                  <div className="relative w-full bg-slate-100 rounded-2xl overflow-hidden min-h-[500px] flex items-center justify-center">
-                    <img src={`data:image/jpeg;base64,${image}`} alt="Kitchen" className="w-full h-auto block max-h-[70vh] object-contain" />
+                  <div className="relative w-full bg-slate-100 rounded-2xl overflow-hidden min-h-[500px] flex items-center justify-center group">
+                    <img src={`data:image/jpeg;base64,${image}`} alt="Kitchen" className="w-full h-auto block max-h-[75vh] object-contain" />
                     {status === 'idle' && (
                       <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] flex items-center justify-center">
                         <span className="bg-white/95 text-slate-900 px-8 py-4 rounded-full text-xs font-black uppercase tracking-widest shadow-2xl">Original Photo</span>
@@ -210,26 +215,26 @@ const App: React.FC = () => {
               </div>
               {analysisReasoning && (
                 <div className="bg-indigo-50 border border-indigo-100 rounded-3xl p-8">
-                  <div className="flex items-center gap-4 mb-4">
+                  <div className="flex items-center gap-4 mb-4 text-left">
                     <div className="bg-indigo-600 p-2 rounded-xl shadow-lg"><Sparkles className="w-5 h-5 text-white" /></div>
                     <h3 className="font-black text-indigo-900 uppercase tracking-tight text-lg">AI Design Analysis</h3>
                   </div>
-                  <p className="text-slate-700 text-base leading-relaxed font-medium">{analysisReasoning}</p>
+                  <p className="text-slate-700 text-base text-left leading-relaxed font-medium">{analysisReasoning}</p>
                 </div>
               )}
             </div>
 
             <div className="lg:col-span-4 space-y-8">
               <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-8">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
+                <h3 className="text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
                   <Palette className="w-4 h-4" /> Visualizer Tools
                 </h3>
                 <div className="space-y-6">
-                  <div>
+                  <div className="text-left">
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Custom Color</label>
-                    <input type="text" value={customColor} onChange={(e) => {setCustomColor(e.target.value); if(e.target.value) setSelectedColor(null);}} placeholder="e.g. Navy Blue" className="w-full text-sm p-4 rounded-2xl border border-slate-100 focus:border-indigo-500 outline-none bg-slate-50 font-bold" />
+                    <input type="text" value={customColor} onChange={(e) => {setCustomColor(e.target.value); if(e.target.value) setSelectedColor(null);}} placeholder="e.g. Hale Navy" className="w-full text-sm p-4 rounded-2xl border border-slate-100 focus:border-indigo-500 outline-none bg-slate-50 font-bold" />
                   </div>
-                  <div>
+                  <div className="text-left">
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
                       <Droplet className="w-3 h-3 text-indigo-400" /> Finish
                     </label>
@@ -245,7 +250,7 @@ const App: React.FC = () => {
 
               {aiSuggestions.length > 0 && (
                 <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-8">
-                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
+                  <h3 className="text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-amber-400" /> Designer Picks
                   </h3>
                   <div className="space-y-4">
