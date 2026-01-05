@@ -16,7 +16,6 @@ export const fileToBase64 = (file: File): Promise<string> => {
 };
 
 export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promise<AnalysisResult> => {
-  // Always create a new instance right before use as per guidelines
   const apiKey = process.env.API_KEY;
   if (!apiKey) {
     throw new Error("API Key is missing. Please ensure 'API_KEY' is configured in your environment variables.");
@@ -30,7 +29,7 @@ export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promi
       contents: {
         parts: [
           { inlineData: { mimeType: "image/jpeg", data: base64Image } },
-          { text: "Identify if this is a kitchen. Suggest 4 cabinet paint colors (brand, name, hex) that complement the counters and flooring. Return JSON." },
+          { text: "ACT AS A WORLD-CLASS INTERIOR DESIGNER. Analyze this kitchen's lighting, fixed elements (counters, backsplash, floors), and overall layout. Suggest exactly 4 Benjamin Moore cabinet paint colors (name, code, hex). In the 'reasoning' field, write a 2-3 sentence sophisticated design consultation note addressed to the client. Focus on color theory, undertones, and how these choices transform the room's mood. Avoid stating the obvious; instead, provide professional insight. Return JSON." },
         ],
       },
       config: {
@@ -49,7 +48,7 @@ export const analyzeKitchenAndSuggestColors = async (base64Image: string): Promi
                   manufacturer: { type: Type.STRING },
                   code: { type: Type.STRING },
                   hex: { type: Type.STRING },
-                  description: { type: Type.STRING }
+                  description: { type: Type.STRING, description: "Designer explanation for this specific color pick" }
                 }
               }
             }
@@ -87,15 +86,16 @@ export const generateCabinetPreview = async (
     let prompt = `REPAINT KITCHEN CABINETS:
     - Target: All visible cabinets and islands.
     - Style: Photorealistic 4K architectural interior photography.
+    - SURFACE FINISH: The paint must be applied as a smooth, professional factory-applied finish. 
+    - NO TEXTURE: Absolutely NO wood grain, NO wood texture, and NO natural wood patterns should be visible on the painted surfaces. 
     - Restriction: Do NOT change countertops, backsplash, floor, or walls.`;
     
     if (colorName) {
-      prompt += `\n- NEW COLOR: "${colorName}"${colorHex ? ` (Hex Ref: ${colorHex})` : ''}.`;
+      prompt += `\n- NEW COLOR: Use Benjamin Moore "${colorName}"${colorHex ? ` (Hex Ref: ${colorHex})` : ''}.`;
     }
     
-    if (sheen && sheen !== 'Default') {
-      prompt += `\n- FINISH: ${sheen} sheen.`;
-    }
+    const effectiveSheen = (sheen === 'Default' || !sheen) ? 'Satin' : sheen;
+    prompt += `\n- FINISH: ${effectiveSheen} sheen.`;
 
     if (hardwareName && hardwareName !== 'Keep Existing') {
       prompt += `\n- HARDWARE: Replace current handles with ${hardwareName}.`;
@@ -105,7 +105,7 @@ export const generateCabinetPreview = async (
       prompt += `\n- ADDITIONAL: ${customInstruction}`;
     }
 
-    prompt += `\n- Return the edited image with realistic shadows and lighting.`;
+    prompt += `\n- Return the edited image with realistic shadows and lighting, ensuring the cabinet surfaces look opaque, smooth, and modern.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
@@ -116,7 +116,7 @@ export const generateCabinetPreview = async (
         ],
       },
       config: {
-        imageConfig: { aspectRatio: "1:1" }
+        imageConfig: { aspectRatio: "4:3" }
       }
     });
 

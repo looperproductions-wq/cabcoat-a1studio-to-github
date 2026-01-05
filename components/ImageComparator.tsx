@@ -13,7 +13,6 @@ export const ImageComparator: React.FC<ImageComparatorProps> = ({ originalImage,
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  // Initializing dragStart with a static object { x: 0, y: 0 } instead of trying to access 'e' which is undefined here
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   
   const containerRef = useRef<HTMLDivElement>(null);
@@ -50,47 +49,33 @@ export const ImageComparator: React.FC<ImageComparatorProps> = ({ originalImage,
 
   const handleMouseUp = () => setIsDragging(false);
 
-  // Download with Color Info Swatch
   const handleDownload = () => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const img = new Image();
-    
-    // Use the generated image source
     img.src = `data:image/png;base64,${generatedImage}`;
     
     img.onload = () => {
-      // Set canvas size (Image + 120px Footer)
       const footerHeight = 120;
       canvas.width = img.width;
       canvas.height = img.height + footerHeight;
 
       if (ctx) {
-        // Draw Background
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // Draw Main Image
         ctx.drawImage(img, 0, 0);
-
-        // Draw Footer Area
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, img.height, canvas.width, footerHeight);
-        
-        // Draw Divider Line
         ctx.fillStyle = '#E2E8F0';
         ctx.fillRect(0, img.height, canvas.width, 2);
 
-        // Footer Content Layout
         const padding = 40;
         const footerCenterY = img.height + (footerHeight / 2);
         let textStartX = padding;
         
-        // Draw Swatch Circle (if hex exists)
         if (activeColor?.hex) {
             const swatchRadius = 28;
             const swatchX = padding + swatchRadius;
-            
             ctx.beginPath();
             ctx.arc(swatchX, footerCenterY, swatchRadius, 0, 2 * Math.PI);
             ctx.fillStyle = activeColor.hex;
@@ -98,39 +83,31 @@ export const ImageComparator: React.FC<ImageComparatorProps> = ({ originalImage,
             ctx.strokeStyle = '#CBD5E1';
             ctx.lineWidth = 2;
             ctx.stroke();
-            
             textStartX = swatchX + swatchRadius + 24;
         }
 
-        // Draw Manufacturer / Code / Name
         if (activeColor?.manufacturer && activeColor?.code) {
-             // Subtitle (Manufacturer | Code)
-             ctx.fillStyle = '#64748B'; // Slate-500
+             ctx.fillStyle = '#64748B';
              ctx.font = 'bold 20px Inter, sans-serif';
              ctx.textAlign = 'left';
              ctx.fillText(`${activeColor.manufacturer} | ${activeColor.code}`, textStartX, footerCenterY - 8);
-             
-             // Main Title (Color Name)
-             ctx.fillStyle = '#0F172A'; // Slate-900
+             ctx.fillStyle = '#0F172A';
              ctx.font = 'bold 34px Inter, sans-serif';
              ctx.textAlign = 'left';
              ctx.fillText(activeColor?.name || "Custom Finish", textStartX, footerCenterY + 30);
         } else {
-             // Single Line Title (centered vertically in footer)
-             ctx.fillStyle = '#0F172A'; // Slate-900
+             ctx.fillStyle = '#0F172A';
              ctx.font = 'bold 38px Inter, sans-serif';
              ctx.textAlign = 'left';
              ctx.fillText(activeColor?.name || "Custom Finish", textStartX, footerCenterY + 14);
         }
 
-        // Add brand watermark to bottom right
-        ctx.fillStyle = '#94A3B8'; // Slate-400
+        ctx.fillStyle = '#94A3B8';
         ctx.font = 'bold 22px Inter, sans-serif';
         ctx.textAlign = 'right';
         ctx.fillText("cabcoat.com", canvas.width - padding, footerCenterY + 14);
       }
 
-      // Save as JPEG
       const link = document.createElement('a');
       link.download = `cabcoat-design-${Date.now()}.jpg`;
       link.href = canvas.toDataURL('image/jpeg', 0.95);
@@ -155,47 +132,54 @@ export const ImageComparator: React.FC<ImageComparatorProps> = ({ originalImage,
           transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
           transition: isDragging ? 'none' : 'transform 0.2s ease-out'
         }}
-        className="max-w-full max-h-full object-contain pointer-events-none select-none"
+        className="max-w-full max-h-full object-contain pointer-events-none select-none transition-all duration-200"
       />
       
-      {/* Floating Controls */}
+      {/* Top Controls */}
       <div className="absolute top-4 right-4 flex flex-col gap-2 z-20">
-         <button onClick={handleZoomIn} title="Zoom In" className="bg-white/90 p-2 rounded-lg shadow-md hover:bg-white text-slate-700 transition-colors">
+         <button onClick={handleZoomIn} title="Zoom In" className="bg-white/90 p-2 rounded-lg shadow-md hover:bg-white text-slate-700 transition-colors pointer-events-auto">
            <ZoomIn className="w-5 h-5" />
          </button>
-         <button onClick={handleZoomOut} title="Zoom Out" className="bg-white/90 p-2 rounded-lg shadow-md hover:bg-white text-slate-700 transition-colors">
+         <button onClick={handleZoomOut} title="Zoom Out" className="bg-white/90 p-2 rounded-lg shadow-md hover:bg-white text-slate-700 transition-colors pointer-events-auto">
            <ZoomOut className="w-5 h-5" />
          </button>
-         <button onClick={handleReset} title="Reset View" className="bg-white/90 p-2 rounded-lg shadow-md hover:bg-white text-slate-700 transition-colors">
+         <button onClick={handleReset} title="Reset View" className="bg-white/90 p-2 rounded-lg shadow-md hover:bg-white text-slate-700 transition-colors pointer-events-auto">
            <RotateCcw className="w-5 h-5" />
          </button>
       </div>
 
-      <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2 justify-between items-end z-20 pointer-events-none">
-         
-         <div className="pointer-events-auto">
-             <span className="bg-black/60 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur block mb-2 w-max">
-                {showOriginal ? 'Original' : 'AI Preview'}
-             </span>
-             {activeColor && !showOriginal && (
-                <div className="bg-white/90 backdrop-blur-md p-3 rounded-lg shadow-lg flex items-center gap-3 border border-white/50">
-                    {activeColor.hex && (
-                        <div className="w-8 h-8 rounded-full shadow-inner border border-slate-200" style={{ backgroundColor: activeColor.hex }} />
-                    )}
-                    <div>
-                        <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Active Finish</p>
-                        <p className="text-sm font-bold text-slate-900">{activeColor.name}</p>
-                    </div>
-                </div>
-             )}
+      {/* Stable Bottom Bar */}
+      <div className="absolute bottom-0 left-0 right-0 p-4 flex justify-between items-end z-20 pointer-events-none">
+         {/* Label Area - Fixed height to prevent jumps */}
+         <div className="flex flex-col items-start min-h-[100px] pointer-events-none">
+             <div className="transition-all duration-200 mb-2 pointer-events-auto">
+                <span className="bg-black/60 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest backdrop-blur shadow-xl">
+                   {showOriginal ? 'Original' : 'AI Preview'}
+                </span>
+             </div>
+             
+             <div className={`transition-all duration-300 pointer-events-auto ${activeColor && !showOriginal ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+                {activeColor && (
+                   <div className="bg-white/95 backdrop-blur-md p-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/50">
+                       {activeColor.hex && (
+                           <div className="w-8 h-8 rounded-full shadow-inner border border-slate-200 shrink-0" style={{ backgroundColor: activeColor.hex }} />
+                       )}
+                       <div className="pr-2">
+                           <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest mb-0.5 leading-none">Selected</p>
+                           <p className="text-sm font-black text-slate-900 leading-none">{activeColor.name}</p>
+                       </div>
+                   </div>
+                )}
+             </div>
          </div>
 
-         <div className="flex gap-2 pointer-events-auto">
+         {/* Action Buttons */}
+         <div className="flex gap-2 pointer-events-auto items-end">
             <button
                 onClick={handleDownload}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium shadow-lg flex items-center gap-2 transition-all active:scale-95"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl flex items-center gap-2 transition-all active:scale-95"
             >
-                <Download className="w-4 h-4" /> Save Design
+                <Download className="w-4 h-4" /> Save
             </button>
             <button
                 onMouseDown={() => setShowOriginal(true)}
@@ -203,13 +187,12 @@ export const ImageComparator: React.FC<ImageComparatorProps> = ({ originalImage,
                 onMouseLeave={() => setShowOriginal(false)}
                 onTouchStart={() => setShowOriginal(true)}
                 onTouchEnd={() => setShowOriginal(false)}
-                className="bg-white/90 hover:bg-white text-slate-800 px-4 py-2 rounded-lg font-medium shadow-lg flex items-center gap-2 backdrop-blur transition-all active:scale-95 select-none"
+                className="bg-white/95 hover:bg-white text-slate-900 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl flex items-center gap-2 backdrop-blur transition-all active:scale-95 select-none"
             >
                 {showOriginal ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                {showOriginal ? "Showing Original" : "Compare"}
+                Compare
             </button>
          </div>
-
       </div>
     </div>
   );
